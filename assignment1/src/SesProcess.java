@@ -38,6 +38,7 @@ public class SesProcess {
         }
         public void sendMessage(SesMessage msg) {
             System.out.println("I am " + this.name + " and I received a message: " + msg.getMessage());
+            System.out.println(msg);
         }
     }
 
@@ -120,11 +121,30 @@ public class SesProcess {
         }
 
         int cnt=0;
+
+        List<Integer> vector1 = new ArrayList<Integer>();
+        List<Integer> vector2 = new ArrayList<Integer>();
+        vector1.add(1);
+        vector1.add(0);
+        vector1.add(0);
+
+        vector2.add(0);
+        vector2.add(1);
+        vector2.add(1);
+
+        ProcessVectorContainer pvc1 = new ProcessVectorContainer("Test process 1", vector1);
+        ProcessVectorContainer pvc2 = new ProcessVectorContainer("Test process 2", vector2);
+
+        List<ProcessVectorContainer> processVectorList = new ArrayList<ProcessVectorContainer>();
+        processVectorList.add(pvc1);
+        processVectorList.add(pvc2);
+
         while (rmiList.size() != 0) {
             System.out.println("Infinite loop");
             for (SesRmi obj: rmiList) {
                 System.out.println("Sending message");
-                sendMessage(obj, new SesMessage("test", new ArrayList<Integer>(), "msg: count=" + (cnt++)));
+                SesMessage msg = new SesMessage("Test message: " + (cnt++), processVectorList);
+                sendMessage(obj, msg);;
                 delay_ms(5000);
             }
         }

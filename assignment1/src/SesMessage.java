@@ -2,21 +2,27 @@ import java.util.*;
 
 // The Schiper-Eggli-Sandoz algorithm Message structure
 class SesMessage implements java.io.Serializable {
-    private String processID;
-    private List<Integer> processVector;
+    private List <ProcessVectorContainer> pvcList;
     private String message;
 
-    public SesMessage(String id, List<Integer> vec, String msg) {
-        this.processID = id;
-        this.processVector = new ArrayList<Integer>(vec);
+    public SesMessage(String msg, List<ProcessVectorContainer> pvcList) {
+        this.pvcList = new ArrayList<ProcessVectorContainer>(pvcList);
         this.message = msg;
-    }
-
-    public String getProcessID() {
-        return this.processID;
     }
 
     public String getMessage() {
         return this.message;
+    }
+
+    public String toString() {
+        String res = "";
+        res += "Message: " + this.message + "\n";
+        res += "Process vector combinations:\n";
+        for (ProcessVectorContainer pvc: this.pvcList) {
+            res += "\tProcess: " + pvc.getProcessID();
+            res += "\tVector: " + pvc.getProcessVector();
+        }
+        res += "\n";
+        return res;
     }
 }
