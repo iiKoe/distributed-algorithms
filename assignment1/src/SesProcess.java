@@ -1,7 +1,18 @@
+/*
+    Terminal 1:
+        rmiregisty &
+        java -Djava.security.policy=my.policy SesProcess p1
+
+    lsof -i :1099
+    kill -9 <PID>
+
+*/
+
 import java.util.*;
 import java.rmi.Naming; 
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
+
 
 public class SesProcess {
 
@@ -71,6 +82,41 @@ public class SesProcess {
         }
     }
 
+    // Input sentence to send
+    public static ArrayList<String> inputSentence(){
+        ArrayList<String> sentence = new ArrayList<String>();
+        Scanner scan = new Scanner(System.in);
+
+        try {
+            System.out.println("Input your sentence to send. \n words separated with enter, end is indicated with a dot.");
+
+            String word = scan.nextLine();
+            while(!word.equalsIgnoreCase("."))
+            {
+                sentence.add(word);
+                word = scan.nextLine();
+            }
+        } catch (Exception e) {
+            System.out.println("Input err: ");
+            e.printStackTrace();
+        }
+        return sentence;
+    }
+
+    // Print sentence as check
+    public static void printSentence (ArrayList<String> sentence){
+        for (String s: sentence){
+                System.out.printf("%s ",s);
+        }
+        System.out.printf("\n");
+    }
+
+    // Send all strings in ArrayList<String> once.
+    // Hardcoded out of order and delay ?
+
+
+
+
     public static void main(String args[]) {
         String name = "";
         List<String> processList = new ArrayList<String>();
@@ -115,22 +161,27 @@ public class SesProcess {
                     System.out.println("Binding " + s + " succeded!");
                 } catch (Exception e) {
                     System.out.println("Bound Error for " + s);
+                    System.out.println("Send RMI message err: " + e.getMessage());
+                    e.printStackTrace();
                     delay_ms(1000);
                 }
             }
         }
 
+        // Input sentence which will be send with random delays to other process.
+        ArrayList <String> sentence = inputSentence();
+
         int cnt=0;
 
         List<Integer> vector1 = new ArrayList<Integer>();
         List<Integer> vector2 = new ArrayList<Integer>();
-        vector1.add(1);
+        vector1.add(0);
         vector1.add(0);
         vector1.add(0);
 
         vector2.add(0);
-        vector2.add(1);
-        vector2.add(1);
+        vector2.add(0);
+        vector2.add(0);
 
         ProcessVectorContainer pvc1 = new ProcessVectorContainer("Test process 1", vector1);
         ProcessVectorContainer pvc2 = new ProcessVectorContainer("Test process 2", vector2);
@@ -142,13 +193,27 @@ public class SesProcess {
         while (rmiList.size() != 0) {
             System.out.println("Infinite loop");
             for (SesRmi obj: rmiList) {
+                    for (String s: sentence){
+                        System.out.println("Sending message");
+                        SesMessage msg = new SesMessage("Test message: " + (cnt++), processVectorList);
+                        //System.out.println(s);
+                        sendMessage(obj, msg);;
+                        delay_ms(5000);
+                    }    
+            }
+        }
+
+/*
+        while (rmiList.size() != 0) {
+            System.out.println("Infinite loop");
+            for (SesRmi obj: rmiList) {
                 System.out.println("Sending message");
                 SesMessage msg = new SesMessage("Test message: " + (cnt++), processVectorList);
                 sendMessage(obj, msg);;
                 delay_ms(5000);
             }
         }
-
+*/
         System.out.println("End");
     }
 }
