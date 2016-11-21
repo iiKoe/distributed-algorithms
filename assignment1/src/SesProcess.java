@@ -5,7 +5,6 @@
 
     lsof -i :1099
     kill -9 <PID>
-
 */
 
 import java.util.*;
@@ -76,6 +75,7 @@ public class SesProcess {
         try {
             System.out.println("I am SENDING msg: " + msg.getMessage());
             RmiObj.sendMessage(msg);
+            msg.incrementOwnClock();
         } catch (Exception e) {
             System.out.println("Send RMI message err: " + e.getMessage());
             e.printStackTrace();
@@ -113,9 +113,6 @@ public class SesProcess {
 
     // Send all strings in ArrayList<String> once.
     // Hardcoded out of order and delay ?
-
-
-
 
     public static void main(String args[]) {
         String name = "";
@@ -169,8 +166,8 @@ public class SesProcess {
         }
 
         // Input sentence which will be send with random delays to other process.
-        ArrayList <String> sentence = inputSentence();
-
+        //ArrayList <String> sentence = inputSentence();
+    
         int cnt=0;
 
         List<Integer> vector1 = new ArrayList<Integer>();
@@ -193,27 +190,13 @@ public class SesProcess {
         while (rmiList.size() != 0) {
             System.out.println("Infinite loop");
             for (SesRmi obj: rmiList) {
-                    for (String s: sentence){
-                        System.out.println("Sending message");
-                        SesMessage msg = new SesMessage("Test message: " + (cnt++), processVectorList);
-                        //System.out.println(s);
-                        sendMessage(obj, msg);;
-                        delay_ms(5000);
-                    }    
-            }
-        }
-
-/*
-        while (rmiList.size() != 0) {
-            System.out.println("Infinite loop");
-            for (SesRmi obj: rmiList) {
                 System.out.println("Sending message");
                 SesMessage msg = new SesMessage("Test message: " + (cnt++), processVectorList);
-                sendMessage(obj, msg);;
+                sendMessage(obj, msg);
                 delay_ms(5000);
             }
         }
-*/
+
         System.out.println("End");
     }
 }
