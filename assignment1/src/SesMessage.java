@@ -28,7 +28,7 @@ class SesMessage implements java.io.Serializable {
         return this.message;
     }
 
-    public List <ProcessVectorContainer> getpvcList() {
+    public List<ProcessVectorContainer> getPvcList() {
         return this.pvcList;
     }
 

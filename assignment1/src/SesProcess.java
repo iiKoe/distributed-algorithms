@@ -52,6 +52,80 @@ public class SesProcess {
         }
     }
 
+    static class SesMessageManager {
+        public List<SesMessage> messageBuffer;
+        private int myVectorIndex;
+
+        private String localProcess;
+        private List<Integer> localVector;
+        private List <ProcessVectorContainer> localPvcList;
+        
+        SesMessageManager(String process, int vectorIndex) {
+            this.localProcess = process;
+            this.localVector = new ArrayList<Integer>();
+            this.myVectorIndex = vectorIndex;
+            this.messageBuffer = new ArrayList<SesMessage>();
+            this.localPvcList = new ArrayList<ProcessVectorContainer>();
+        }
+        // Add a new message to the buffer and return if a message can be
+        // further used (returns the passed message if it is the next in line)
+        // Returns null if no messages are OK
+        public SesMessage add(SesMessage msg) {
+            // Check if the message can be accepted (vector for this one is OK)
+            List<ProcessVectorContainer> newPvcList = msg.getPvcList();
+            ProcessVectorContainer newPvc = findPvc(this.localProcess, newPvcList);
+            
+            if (checkPvc(newPvc) == true) {
+                // Update and merge the PVC list
+                //updatePvc();
+                
+                // Increment the current clock
+                incrementMyClock();
+
+                // Return this message as it is ready to be accepted
+                return msg;
+            } else {
+                // Buffer the message
+                this.messageBuffer.add(msg);
+            }
+
+            return null;
+        }
+
+        public void incrementMyClock() {
+            int newClock = this.localVector.get(this.myVectorIndex) + 1;
+            this.localVector.set(this.myVectorIndex, newClock);
+        }
+
+        public ProcessVectorContainer findPvc(String process, List<ProcessVectorContainer> pvcList) {
+            for (ProcessVectorContainer pvc: pvcList) {
+                if (process == pvc.getProcessID()) {
+                    return pvc;
+                }
+            }
+            return null;
+        }
+
+        public boolean checkPvc(ProcessVectorContainer pvc) {
+            if (pvc == null) {
+                // The process was not in the pvc list, so the message can be accepted. 
+                return true;
+            }
+
+            int currentClock = this.localVector.get(this.myVectorIndex);
+            int newClock = pvc.getProcessVector().get(this.myVectorIndex);
+        
+            if (currentClock >= newClock) {
+                // Message is older or the same, can be processed
+                return true;
+            } else {
+                // Message needs to be buffered
+                return false;
+            }
+        }
+        
+    }
+
 
     public static void setupRmi() {
         if (System.getSecurityManager() == null) {
