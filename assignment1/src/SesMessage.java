@@ -14,6 +14,10 @@ class SesMessage implements java.io.Serializable {
         return this.message;
     }
 
+    public List<ProcessVectorContainer> getPvcList() {
+        return this.pvcList;
+    }
+
     public String toString() {
         String res = "";
         res += "Message: " + this.message + "\n";
