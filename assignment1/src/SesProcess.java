@@ -9,6 +9,7 @@
 */
 
 import java.util.*;
+import java.lang.*;
 import java.rmi.Naming; 
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
@@ -25,19 +26,6 @@ public class SesProcess {
         }
     }
     
-    // The message buffer
-    static class sesMessageBuffer {
-        public List<SesMessage> messageBuffer;
-
-        public sesMessageBuffer() {
-            this.messageBuffer = new ArrayList<SesMessage>();
-        }
-
-        public void add(SesMessage msg) {
-            this.messageBuffer.add(msg);
-        }
-    }
-
     // The client part
     static class SesClient extends UnicastRemoteObject implements SesRmi {
         private String name;
@@ -77,8 +65,11 @@ public class SesProcess {
             ProcessVectorContainer newPvc = findPvc(this.localProcess, newPvcList);
             
             if (checkPvc(newPvc) == true) {
+                // Remove unneeded entry local PVC list
+                removeLocalNotNeeded(msg);
+
                 // Update and merge the PVC list
-                //updatePvc();
+                mergePvcList(newPvcList);
                 
                 // Increment the current clock
                 incrementMyClock();
@@ -91,6 +82,54 @@ public class SesProcess {
             }
 
             return null;
+        }
+
+        public void sendMessage(String receiverID, String message) {
+            incrementMyClock();
+            SesMessage msg = new SesMessage(message, this.localProcess, this.localVector, this.localPvcList);
+            // Send a message with incremented localVector and Current PVC List
+
+            // Add send message to curren PVC List
+            ProcessVectorContainer newPvc = new ProcessVectorContainer(receiverID, this.localVector);
+
+            // If excists, merge
+            mergePvc(newPvc);
+        }
+
+        public void removeLocalNotNeeded(SesMessage msg) {
+            // If there already is a msg in the history present from the sender, we can assume that it is
+            // not needed any more and can be removed?
+            ProcessVectorContainer notNeededPvc = findPvc(msg.getSenderProcessID(), this.localPvcList);
+            this.localPvcList.remove(notNeededPvc);
+        }
+
+
+        public void mergePvcList(List<ProcessVectorContainer> newPvcList) {
+            // Merge the remaining lists
+            for (ProcessVectorContainer pvc : newPvcList) {
+                mergePvc(pvc);
+            }
+        }
+
+        public void mergePvc(ProcessVectorContainer pvc) {
+            ProcessVectorContainer localPvc = findPvc(pvc.getProcessID(), this.localPvcList);
+            if (localPvc == null) {
+                // Not found, so add it
+                this.localPvcList.add(pvc);
+            } else {
+                // Already an entry for the process, so update it
+                List <Integer> maxv = maxVector(localPvc.getProcessVector(), pvc.getProcessVector());
+                localPvc.setProcessVector(maxv);
+            }
+            
+        }
+
+        public List<Integer> maxVector(List<Integer> v1, List<Integer> v2) {
+            List<Integer> res = new ArrayList<Integer>();
+            for (int i=0; i<v1.size(); i++) {
+                res.add(Math.max(v1.get(i), v2.get(i))); 
+            }
+            return res;
         }
 
         public void incrementMyClock() {
