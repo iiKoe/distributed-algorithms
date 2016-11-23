@@ -30,14 +30,17 @@ public class SesProcess {
     static class SesClient extends UnicastRemoteObject implements SesRmi {
         private String name;
         private List<Integer> vector;
+        private SesMessageManager myMessageManager;
         
-        public SesClient(String myName) throws RemoteException {
+        public SesClient(String myName, SesMessageManager myManager) throws RemoteException {
             this.name = myName;
-            this.vector = new ArrayList<Integer>();
+            this.myMessageManager = myManager;
         }
         public void sendMessage(SesMessage msg) {
             System.out.println("I am " + this.name + " and I received a message: " + msg.getMessage());
             System.out.println(msg);
+            List<SesMessage> msgList = myMessageManager.add(msg);
+            System.out.println("Ready messages are: " + msgList);
         }
     }
 
@@ -49,22 +52,31 @@ public class SesProcess {
         private List<Integer> localVector;
         private List <ProcessVectorContainer> localPvcList;
         
-        SesMessageManager(String process, int vectorIndex) {
+        SesMessageManager(String process, int vectorIndex, int vectorSize) {
             this.localProcess = process;
             this.localVector = new ArrayList<Integer>();
             this.myVectorIndex = vectorIndex;
             this.messageBuffer = new ArrayList<SesMessage>();
             this.localPvcList = new ArrayList<ProcessVectorContainer>();
+
+            // Init vectors
+            for (int i=0; i<vectorSize; i++) {
+                this.localVector.add(0);
+            }
         }
         // Add a new message to the buffer and return if a message can be
         // further used (returns the passed message if it is the next in line)
         // Returns null if no messages are OK
-        public SesMessage add(SesMessage msg) {
+        public List<SesMessage> add(SesMessage msg) {
             // Check if the message can be accepted (vector for this one is OK)
             List<ProcessVectorContainer> newPvcList = msg.getPvcList();
             ProcessVectorContainer newPvc = findPvc(this.localProcess, newPvcList);
+
+            List<SesMessage> readyMsgList = new ArrayList<SesMessage>();
             
             if (checkPvc(newPvc) == true) {
+                System.out.println("Message can be accepted");
+
                 // Remove unneeded entry local PVC list
                 removeLocalNotNeeded(msg);
 
@@ -74,20 +86,26 @@ public class SesProcess {
                 // Increment the current clock
                 incrementMyClock();
 
-                // Return this message as it is ready to be accepted
-                return msg;
+                // Add the received message as the first element to the list
+                readyMsgList.add(msg);
+
+                // Check the buffered elements
+                // TODO make call recursive to handle chained stalls due to missing message?
+                return readyMsgList;
             } else {
                 // Buffer the message
+                System.out.println("Message can NOT be accepted");
                 this.messageBuffer.add(msg);
             }
 
             return null;
         }
 
-        public void sendMessage(String receiverID, String message) {
+        public void sendMessage(SesRmi rmiObj, String receiverID, String message) {
             incrementMyClock();
             SesMessage msg = new SesMessage(message, this.localProcess, this.localVector, this.localPvcList);
             // Send a message with incremented localVector and Current PVC List
+            sendRmiMessage(rmiObj, msg);
 
             // Add send message to curren PVC List
             ProcessVectorContainer newPvc = new ProcessVectorContainer(receiverID, this.localVector);
@@ -139,7 +157,7 @@ public class SesProcess {
 
         public ProcessVectorContainer findPvc(String process, List<ProcessVectorContainer> pvcList) {
             for (ProcessVectorContainer pvc: pvcList) {
-                if (process == pvc.getProcessID()) {
+                if (process.equals(pvc.getProcessID())) {
                     return pvc;
                 }
             }
@@ -173,9 +191,9 @@ public class SesProcess {
         }
     }
 
-    public static void setupRmiClient(String clientName) {
+    public static void setupRmiClient(String clientName, SesMessageManager manager) {
         try {
-            SesClient obj = new SesClient(clientName);
+            SesClient obj = new SesClient(clientName, manager);
             Naming.rebind(clientName, obj);
         } catch (Exception e) {
             System.out.println("Client setup name: " + clientName + " err: " + e.getMessage());
@@ -185,7 +203,7 @@ public class SesProcess {
     }
 
     // Send a message
-    public static void sendMessage(SesRmi RmiObj, SesMessage msg) {
+    public static void sendRmiMessage(SesRmi RmiObj, SesMessage msg) {
         try {
             System.out.println("I am SENDING msg: " + msg.getMessage());
             RmiObj.sendMessage(msg);
@@ -229,6 +247,8 @@ public class SesProcess {
 
     public static void main(String args[]) {
         String name = "";
+        int vectorIndex = 0;
+        int vectorSize = 0;
         List<String> processList = new ArrayList<String>();
         List<SesRmi> rmiList = new ArrayList<SesRmi>();
 
@@ -237,13 +257,24 @@ public class SesProcess {
             System.out.println("Provide arguments please");
             return;
         }
+
+        vectorSize = args.length - 1;
+        System.out.println("Using vector size: " + vectorSize);
         
         for (String s: args) {
-            if (name == "")
+            if (name.equals("")) {
                 name = s;
-            else
-                processList.add(s);
+            }
+            else {
+                if (!s.equals(name)) {
+                    processList.add(s);
+                    vectorIndex++;
+                } else {
+                    System.out.println("Found vector index: " + vectorIndex);
+                }
+            }
         }
+
 
         System.out.println("Using name: " + name);
 
@@ -251,9 +282,15 @@ public class SesProcess {
         for (String s: processList) {
             System.out.println("\t" + s);
         }
+        
+        // Find the vector index
+
+
+        // The SES Setup
+        SesMessageManager sesManager = new SesMessageManager(name, vectorIndex, vectorSize);
 
         System.out.println("Setup local RMI client: " + name);
-        setupRmiClient(name);
+        setupRmiClient(name, sesManager);
 
         System.out.println("Setup RMI security manager");
         setupRmi();
@@ -271,59 +308,23 @@ public class SesProcess {
                     System.out.println("Binding " + s + " succeded!");
                 } catch (Exception e) {
                     System.out.println("Bound Error for " + s);
-                    System.out.println("Send RMI message err: " + e.getMessage());
-                    e.printStackTrace();
+                    //System.out.println("Send RMI message err: " + e.getMessage());
+                    //e.printStackTrace();
                     delay_ms(1000);
                 }
             }
         }
 
-        // Input sentence which will be send with random delays to other process.
-        ArrayList <String> sentence = inputSentence();
 
         int cnt=0;
-
-        List<Integer> vector1 = new ArrayList<Integer>();
-        List<Integer> vector2 = new ArrayList<Integer>();
-        vector1.add(0);
-        vector1.add(0);
-        vector1.add(0);
-
-        vector2.add(0);
-        vector2.add(0);
-        vector2.add(0);
-
-        ProcessVectorContainer pvc1 = new ProcessVectorContainer("Test process 1", vector1);
-        ProcessVectorContainer pvc2 = new ProcessVectorContainer("Test process 2", vector2);
-
-        List<ProcessVectorContainer> processVectorList = new ArrayList<ProcessVectorContainer>();
-        processVectorList.add(pvc1);
-        processVectorList.add(pvc2);
-
         while (rmiList.size() != 0) {
             System.out.println("Infinite loop");
-            for (SesRmi obj: rmiList) {
-                    for (String s: sentence){
-                        System.out.println("Sending message");
-                        SesMessage msg = new SesMessage("Test message: " + (cnt++), processVectorList);
-                        //System.out.println(s);
-                        sendMessage(obj, msg);;
-                        delay_ms(5000);
-                    }    
-            }
-        }
-
-/*
-        while (rmiList.size() != 0) {
-            System.out.println("Infinite loop");
-            for (SesRmi obj: rmiList) {
+            for (int i=0; i<rmiList.size(); i++) {
                 System.out.println("Sending message");
-                SesMessage msg = new SesMessage("Test message: " + (cnt++), processVectorList);
-                sendMessage(obj, msg);;
+                sesManager.sendMessage(rmiList.get(i), processList.get(i), "Test message" + (cnt++));
                 delay_ms(5000);
             }
         }
-*/
         System.out.println("End");
     }
 }
