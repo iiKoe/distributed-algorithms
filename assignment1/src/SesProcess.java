@@ -335,16 +335,23 @@ public class SesProcess {
             }
         }
 
+        Scanner scanner = new Scanner(System.in);
 
-        int cnt=0;
         while (rmiList.size() != 0) {
-            System.out.println("Infinite loop");
-            for (int i=0; i<rmiList.size(); i++) {
-                System.out.println("Sending message");
-                sesManager.sendMessage(rmiList.get(i), processList.get(i), "Test message" + (cnt++));
-                delay_ms(5000);
+            System.out.println("Enter process name to send to: ");
+            String id = scanner.next();
+            System.out.println("Enter message: ");
+            String send_msg = scanner.next();
+            int pi = processList.indexOf(id);
+            if (pi < 0) {
+                System.out.println("Not a correct process name?");
+                continue;
             }
+            System.out.println("Process vector index of receiver is: " + pi);
+            System.out.println("Sending to: " + id + " msg: " + send_msg);
+            sesManager.sendMessage(rmiList.get(pi), processList.get(pi), send_msg);
         }
+
         System.out.println("End");
     }
 }
