@@ -67,13 +67,11 @@ public class SesProcess {
         // Add a new message to the buffer and return if a message can be
         // further used (returns the passed message if it is the next in line)
         // Returns null if no messages are OK
-        public List<SesMessage> add(SesMessage msg) {
+        public boolean add(SesMessage msg, List<SesMessage> readyMsgList) {
             // Check if the message can be accepted (vector for this one is OK)
             List<ProcessVectorContainer> newPvcList = msg.getPvcList();
             ProcessVectorContainer newPvc = findPvc(this.localProcess, newPvcList);
 
-            List<SesMessage> readyMsgList = new ArrayList<SesMessage>();
-            
             if (checkPvc(newPvc) == true) {
                 System.out.println("Message can be accepted");
 
@@ -89,16 +87,38 @@ public class SesProcess {
                 // Add the received message as the first element to the list
                 readyMsgList.add(msg);
 
+                // Remove the message from the buffer if it was in the buffer
+                if (this.messageBuffer.contains(msg)) {
+                    System.out.println("This was a buffered message, removing it from the buffer");
+                    this.messageBuffer.remove(msg);
+                } else {
+                    System.out.println("This was an origional message, no need to remove from buffer");
+                }
+
                 // Check the buffered elements
-                // TODO make call recursive to handle chained stalls due to missing message?
-                return readyMsgList;
+                for (SesMessage bmsg : this.messageBuffer) {
+                    add(bmsg, readyMsgList);
+                }
+                return true;
+
             } else {
                 // Buffer the message
                 System.out.println("Message can NOT be accepted");
-                this.messageBuffer.add(msg);
+                if (this.messageBuffer.contains(msg)) {
+                    System.out.println("Message buffer already contains this message");
+                } else {
+                    System.out.println("Adding message to buffer");
+                    this.messageBuffer.add(msg);
+                }
             }
 
-            return null;
+            return false;
+        }
+
+        public List<SesMessage> add(SesMessage msg) {
+            List<SesMessage> readyMsgList = new ArrayList<SesMessage>();
+            add(msg, readyMsgList);
+            return readyMsgList;
         }
 
         public void sendMessage(SesRmi rmiObj, String receiverID, String message) {
