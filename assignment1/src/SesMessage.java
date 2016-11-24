@@ -9,7 +9,7 @@ class SesMessage implements java.io.Serializable {
         this.pvcList = new ArrayList<ProcessVectorContainer>(pvcList);
         this.message = msg;
     }
-
+/*
     public void incrementOwnClock(){
         // NOTE !! INCREMENTS CLOCKS OF BOTH SENDING AND RECEIVING PROCESS, SINCE 
         // NO LOSS, DELAY, AND IN-ORDER IS STILL ASSUMED.
@@ -23,6 +23,7 @@ class SesMessage implements java.io.Serializable {
             pvc_l.set(ID-1, value);
         }           
     }
+*/
 
     public String getMessage() {
         return this.message;

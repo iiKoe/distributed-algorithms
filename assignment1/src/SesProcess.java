@@ -11,6 +11,7 @@ import java.util.*;
 import java.rmi.Naming; 
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
+import java.lang.Math;
 
 
 public class SesProcess {
@@ -35,7 +36,7 @@ public class SesProcess {
         public void add(SesMessage msg) {
             this.messageBuffer.add(msg);
         }
-    }
+    } 
 
     // The client part
     static class SesClient extends UnicastRemoteObject implements SesRmi {
@@ -123,7 +124,15 @@ public class SesProcess {
                 return false;
             }
         }
-        
+
+        public void updateBufferAfterDelivery() {
+            // Get buffer, take component wise max.
+            
+            for (SesMessage buff : messageBuffer){
+                List <ProcessVectorContainer> buffList = buff.getPvcList();
+            }
+        }
+     
     }
 
 
@@ -149,7 +158,7 @@ public class SesProcess {
         try {
             System.out.println("I am SENDING msg: " + msg.getMessage());
             RmiObj.sendMessage(msg);
-            msg.incrementOwnClock();
+            //msg.incrementOwnClock();
         } catch (Exception e) {
             System.out.println("Send RMI message err: " + e.getMessage());
             e.printStackTrace();
