@@ -121,6 +121,7 @@ public class SesProcess {
             return readyMsgList;
         }
 
+        /*
         public void sendMessage(SesRmi rmiObj, String receiverID, String message) {
             incrementMyClock();
             SesMessage msg = new SesMessage(message, this.localProcess, this.localVector, this.localPvcList);
@@ -132,6 +133,24 @@ public class SesProcess {
 
             // If excists, merge
             mergePvc(newPvc);
+        }
+        */
+
+        public void sendMessage(SesRmi rmiObj, SesMessage msg) {
+            sendRmiMessage(rmiObj, msg);
+        }
+
+        public SesMessage buildMessage(String receiverID, String message) {
+            incrementMyClock();
+            SesMessage msg = new SesMessage(message, this.localProcess, this.localVector, this.localPvcList);
+
+            // Add send message to curren PVC List
+            ProcessVectorContainer newPvc = new ProcessVectorContainer(receiverID, this.localVector);
+
+            // If excists, merge
+            mergePvc(newPvc);
+
+            return msg;
         }
 
         public void removeLocalNotNeeded(SesMessage msg) {
@@ -335,8 +354,9 @@ public class SesProcess {
             }
         }
 
-        Scanner scanner = new Scanner(System.in);
+        /* Terminal input version
 
+        Scanner scanner = new Scanner(System.in);
         while (rmiList.size() != 0) {
             System.out.println("Enter process name to send to: ");
             String id = scanner.next();
@@ -349,8 +369,51 @@ public class SesProcess {
             }
             System.out.println("Process vector index of receiver is: " + pi);
             System.out.println("Sending to: " + id + " msg: " + send_msg);
-            sesManager.sendMessage(rmiList.get(pi), processList.get(pi), send_msg);
+            SesMessage msg = sesManager.buildMessage(processList.get(pi), send_msg);
+            sesManager.sendMessage(rmiList.get(pi), msg);
         }
+        */
+
+        Scanner scanner = new Scanner(System.in);
+        SesMessage[] msgSendBuffer = new SesMessage[100];
+        String[] sendToBuffer = new String[100];
+        int cnt = 0;
+        boolean done = false;
+
+        while (!done) {
+            String command = scanner.next();
+            if (command.equals("b")) {
+                System.out.println("Building message");
+
+                System.out.println("Enter process name to send to: ");
+                String id = scanner.next();
+                int pi = processList.indexOf(id);
+                if (pi < 0) {
+                    System.out.println("Not a correct process name?");
+                    continue;
+                }
+                System.out.println("Enter message: ");
+                String send_msg = scanner.next();
+                SesMessage msg = sesManager.buildMessage(name, send_msg);
+                System.out.println("Created message with index: " + cnt);
+                msgSendBuffer[cnt] = msg;
+                sendToBuffer[cnt] = id;
+                cnt++;
+
+            } else if (command.equals("s")) {
+                System.out.println("Sending message");
+
+                System.out.println("Send message index: ");
+                int idx = scanner.nextInt();
+                SesMessage msg = msgSendBuffer[idx];
+                String id = sendToBuffer[idx];
+                int pi = processList.indexOf(id);
+                System.out.println("Sending message: " + msg);
+                sesManager.sendMessage(rmiList.get(pi), msg);
+            }
+        }
+
+
 
         System.out.println("End");
     }
