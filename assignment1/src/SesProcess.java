@@ -246,6 +246,7 @@ public class SesProcess {
     public static void setupRmi() {
         if (System.getSecurityManager() == null) {
             System.setSecurityManager(new SecurityManager());
+            System.out.println(System.getSecurityManager());
         }
     }
 
@@ -331,7 +332,8 @@ public class SesProcess {
             boolean bound = false;
             while (!bound) {
                 try {
-                    SesRmi obj = (SesRmi)Naming.lookup("//localhost/" + s);
+                    // ****Change localhost to the IP of the process****
+                    SesRmi obj = (SesRmi)Naming.lookup("rmi://localhost/" + s);
                     rmiList.add(obj);
                     bound = true;
                     System.out.println("Binding " + s + " succeded!");
