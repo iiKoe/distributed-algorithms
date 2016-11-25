@@ -89,6 +89,12 @@ public class SesProcess {
                 // Merge the local clock
                 mergeMyClock(msg.getLocalVector());
 
+                System.out.println("New local clock: " + this.localVector);
+                System.out.println("Updated history list:");
+                for (ProcessVectorContainer lpvc : this.localPvcList) {
+                    System.out.println("\t" + lpvc);
+                }
+
                 // Add the received message as the first element to the list
                 readyMsgList.add(msg);
 
@@ -124,21 +130,6 @@ public class SesProcess {
             add(msg, readyMsgList);
             return readyMsgList;
         }
-
-        /*
-        public void sendMessage(SesRmi rmiObj, String receiverID, String message) {
-            incrementMyClock();
-            SesMessage msg = new SesMessage(message, this.localProcess, this.localVector, this.localPvcList);
-            // Send a message with incremented localVector and Current PVC List
-            sendRmiMessage(rmiObj, msg);
-
-            // Add send message to curren PVC List
-            ProcessVectorContainer newPvc = new ProcessVectorContainer(receiverID, this.localVector);
-
-            // If excists, merge
-            mergePvc(newPvc);
-        }
-        */
 
         public void sendMessage(SesRmi rmiObj, SesMessage msg) {
             sendRmiMessage(rmiObj, msg);
@@ -184,10 +175,12 @@ public class SesProcess {
         }
 
         public void mergePvc(ProcessVectorContainer pvc) {
+            /*
             System.out.println("Merging pvc: " + pvc + " into list:");
             for (ProcessVectorContainer lpvc : this.localPvcList) {
                 System.out.println("\t" + lpvc);
             }
+            */
 
             ProcessVectorContainer localPvc = findPvc(pvc.getProcessID(), this.localPvcList);
             if (localPvc == null) {
@@ -210,22 +203,18 @@ public class SesProcess {
         }
 
         public void incrementMyClock() {
-            System.out.println("Old local vector: " + this.localVector);
             int newClock = this.localVector.get(this.myVectorIndex) + 1;
             this.localVector.set(this.myVectorIndex, newClock);
-            System.out.println("New local vector: " + this.localVector);
         }
 
         public void mergeMyClock(List<Integer> mergeVector) {
-            System.out.println("Merging clocks local: " + this.localVector + "merge: " + mergeVector);
             this.localVector = maxVector(mergeVector, this.localVector);
-            System.out.println("New local clock: " + this.localVector);
         }
 
         public ProcessVectorContainer findPvc(String process, List<ProcessVectorContainer> pvcList) {
-            System.out.println("findPvc, searching for : " + process);
+            //System.out.println("findPvc, searching for : " + process);
             for (ProcessVectorContainer pvc: pvcList) {
-                System.out.println("\tChecking pvc: " + pvc);
+                //System.out.println("\tChecking pvc: " + pvc);
                 if (process.equals(pvc.getProcessID())) {
                     return pvc;
                 }
@@ -239,18 +228,6 @@ public class SesProcess {
                 return true;
             }
 
-            /*
-            int currentClock = this.localVector.get(this.myVectorIndex);
-            int newClock = pvc.getProcessVector().get(this.myVectorIndex);
-        
-            if (currentClock >= newClock) {
-                // Message is older or the same, can be processed
-                return true;
-            } else {
-                // Message needs to be buffered
-                return false;
-            }
-            */
             for (int i=0; i<this.localVector.size(); i++) {
                 int currentClock = this.localVector.get(i);
                 int newClock = pvc.getProcessVector().get(i);
@@ -294,37 +271,6 @@ public class SesProcess {
         }
     }
 
-    // Input sentence to send
-    public static ArrayList<String> inputSentence(){
-        ArrayList<String> sentence = new ArrayList<String>();
-        Scanner scan = new Scanner(System.in);
-
-        try {
-            System.out.println("Input your sentence to send. \n words separated with enter, end is indicated with a dot.");
-
-            String word = scan.nextLine();
-            while(!word.equalsIgnoreCase("."))
-            {
-                sentence.add(word);
-                word = scan.nextLine();
-            }
-        } catch (Exception e) {
-            System.out.println("Input err: ");
-            e.printStackTrace();
-        }
-        return sentence;
-    }
-
-    // Print sentence as check
-    public static void printSentence (ArrayList<String> sentence){
-        for (String s: sentence){
-                System.out.printf("%s ",s);
-        }
-        System.out.printf("\n");
-    }
-
-    // Send all strings in ArrayList<String> once.
-    // Hardcoded out of order and delay ?
 
     public static void main(String args[]) {
         String name = "";
@@ -397,26 +343,6 @@ public class SesProcess {
                 }
             }
         }
-
-        /* Terminal input version
-
-        Scanner scanner = new Scanner(System.in);
-        while (rmiList.size() != 0) {
-            System.out.println("Enter process name to send to: ");
-            String id = scanner.next();
-            System.out.println("Enter message: ");
-            String send_msg = scanner.next();
-            int pi = processList.indexOf(id);
-            if (pi < 0) {
-                System.out.println("Not a correct process name?");
-                continue;
-            }
-            System.out.println("Process vector index of receiver is: " + pi);
-            System.out.println("Sending to: " + id + " msg: " + send_msg);
-            SesMessage msg = sesManager.buildMessage(processList.get(pi), send_msg);
-            sesManager.sendMessage(rmiList.get(pi), msg);
-        }
-        */
 
         Scanner scanner = new Scanner(System.in);
         SesMessage[] msgSendBuffer = new SesMessage[100];
