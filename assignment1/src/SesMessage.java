@@ -10,7 +10,11 @@ class SesMessage implements java.io.Serializable {
     public SesMessage(String msg, String processID, List<Integer> localVector, List<ProcessVectorContainer> pvcList) {
         this.localVector = new ArrayList<Integer>(localVector);
         this.processID = processID;
-        this.pvcList = new ArrayList<ProcessVectorContainer>(pvcList);
+        //this.pvcList = new ArrayList<ProcessVectorContainer>(pvcList);
+        this.pvcList = new ArrayList<ProcessVectorContainer>();
+        for (ProcessVectorContainer pvc : pvcList) {
+            this.pvcList.add(new ProcessVectorContainer(pvc.getProcessID(), new ArrayList<Integer>(pvc.getProcessVector())));
+        }
         this.message = msg;
     }
 /*
@@ -49,10 +53,12 @@ class SesMessage implements java.io.Serializable {
     public String toString() {
         String res = "";
         res += "Message: " + this.message + "\n";
-        res += "Process vector combinations:\n";
+        res += "Message vector: " + this.localVector + "\n";
+        res += "Message Sender: " + this.processID + "\n";
+        res += "Process vector combinations (history):\n";
         for (ProcessVectorContainer pvc: this.pvcList) {
-            res += "\tProcess: " + pvc.getProcessID();
-            res += "\tVector: " + pvc.getProcessVector();
+            res += "\tProcessID: " + pvc.getProcessID() + "\n";
+            res += "\tVector: " + pvc.getProcessVector() + "\n";
         }
         res += "\n";
         return res;
