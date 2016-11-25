@@ -20,4 +20,11 @@ class ProcessVectorContainer implements java.io.Serializable {
     public void setProcessVector(List<Integer> processVector) {
         this.processVector = new ArrayList<Integer>(processVector);
     }
+
+    public String toString() {
+        String res = "";
+        res += "id: " + this.processID;
+        res += " vector: " + this.processVector;
+        return res;
+    }
 }
