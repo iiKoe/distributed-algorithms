@@ -1,10 +1,10 @@
 /*
-    Terminal 1:
+    Run using:
         rmiregisty &
-        java -Djava.security.policy=my.policy SesProcess p1
+        java -Djava.security.policy=my.policy SesProcess p1 p1 p2
+        First argument (here p1) is the name of this process
+        Next arguments (here p1 p2) are the vector clock ordering of the remaining processes
 
-    lsof -i :1099
-    kill -9 <PID>
 
 */
 
