@@ -1,11 +1,9 @@
 /*
-    Terminal 1:
+    Run using:
         rmiregisty &
-        java -Djava.security.policy=my.policy SesProcess    p1 p1 p2
-                                                            p2 p1 p2
-
-    lsof -i :1099
-    kill -9 <PID>
+        java -Djava.security.policy=my.policy SesProcess p1 p1 p2
+        First argument (here p1) is the name of this process
+        Next arguments (here p1 p2) are the vector clock ordering of the remaining processes
 */
 
 import java.util.*;
@@ -255,6 +253,7 @@ public class SesProcess {
     public static void setupRmi() {
         if (System.getSecurityManager() == null) {
             System.setSecurityManager(new SecurityManager());
+            System.out.println(System.getSecurityManager());
         }
     }
 
@@ -342,7 +341,8 @@ public class SesProcess {
             boolean bound = false;
             while (!bound) {
                 try {
-                    SesRmi obj = (SesRmi)Naming.lookup("//localhost/" + s);
+                    // ****Change localhost to the IP of the process****
+                    SesRmi obj = (SesRmi)Naming.lookup("rmi://localhost/" + s);
                     rmiList.add(obj);
                     bound = true;
                     System.out.println("Binding " + s + " succeded!");
