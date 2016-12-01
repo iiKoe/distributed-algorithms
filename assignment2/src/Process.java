@@ -48,6 +48,7 @@ public class Process {
             } else {
                 singhalManager.receive(msg.getToken());
             }
+            singhalManager.printStatus();
         }
     }
 
@@ -116,6 +117,7 @@ public class Process {
 
             this.N = new Integer[size];
             this.S = new SinghalState[size];
+            System.out.println("Size: " + size);
         }
 
         public void init(boolean hasToken) {
@@ -123,6 +125,7 @@ public class Process {
             if (hasToken) {
                 this.S[pidx] = SinghalState.H;
                 start_o = pidx+1;
+                this.token = new SinghalToken(this.size);
             }
 
             for (int j=0; j<pidx; j++) {
@@ -132,19 +135,27 @@ public class Process {
             for (int j=start_o; j<this.size; j++) {
                 this.S[j] = SinghalState.O;
             }
+
+            for (int j=0; j<this.size; j++) {
+                this.N[j] = 0;
+            }
         }
 
         public void request() {
             this.S[this.pidx] = SinghalState.R;
             this.N[this.pidx] +=1;
             for (int j=0; j<this.size; j++) {
+                System.out.println("idx: " + j);
                 // Ignore pidx
                 if (j==pidx) {
                     continue;
                 }
+                System.out.println("Start with idx: " + j);
                 if (this.S[j] == SinghalState.R) {
                     send(j, this.pidx, this.N[this.pidx]);
                 }
+                System.out.println("End with idx: " + j);
+                System.out.println("");
             }
         }
 
@@ -227,37 +238,85 @@ public class Process {
         }
 
         /* Print status */
+        // Quite crude, but ok
         public void printStatus(){
             System.out.println("-----------------------------------");
-            String processes = "";
-            for (int i=0; i<this.size; i++){
-                processes += "Process " + i + "\t"; 
-            }
-            System.out.println(processes);
-
+            System.out.println("PID: " + this.pid);
+            
+            String sdata = "";
+            sdata += ("S[0..." + (this.size - 1) + "]: ");
+            sdata += "(";
             for(int i=0; i<this.size; i++){
-                String status = "(";
-                status += i + ",";
-                status += S[i];
-                status += ")";
-                System.out.printf("%s \t\t", status); 
+                switch (this.S[i]) {
+                    case R:
+                        sdata += "R";
+                        break;
+                    case E:
+                        sdata += "E";
+                        break;
+                    case H:
+                        sdata += "H";
+                        break;
+                    case O:
+                        sdata += "O";
+                        break;
+                    default:
+                        sdata += "Unknown";
+                }
+                sdata += ",";
             }
+            sdata += ")";
+            System.out.println(sdata); 
 
-            String state = "";
-            state += S[this.pidx];      // Beunfix, maar krijg anders de waarde er niet in. 
-            if (state.equals("H")){
-                
-                try {
-                    SinghalState[] tokenTS = this.token.getTS();            // **** FAALT ****
-                    for (int j=0; j<this.size; j++) {
-                        System.out.println(tokenTS[j]);
+            String ndata = "";
+            ndata += ("N[0..." + (this.size - 1) + "]: ");
+            ndata += "(";
+            for(int i=0; i<this.size; i++){
+                ndata += this.N[i];
+                ndata += ",";
+            }
+            ndata += ")";
+            System.out.println(ndata); 
+
+            // If this process has the token
+            if (this.S[this.pidx] == SinghalState.H) {
+
+                String tsdata = "";
+                tsdata += ("TS[0..." + (this.size - 1) + "]: ");
+                tsdata += "(";
+                SinghalState[] tokenTS = this.token.getTS();
+                for(int i=0; i<this.size; i++){
+                    switch (tokenTS[i]) {
+                        case R:
+                            tsdata += "R";
+                            break;
+                        case E:
+                            tsdata += "E";
+                            break;
+                        case H:
+                            tsdata += "H";
+                            break;
+                        case O:
+                            tsdata += "O";
+                            break;
+                        default:
+                            tsdata += "Unknown";
                     }
+                    tsdata += ",";
                 }
-                catch (Exception e){
-                    System.out.println("getTS failed.");
-                    e.printStackTrace();
+                tsdata += ")";
+                System.out.println(tsdata); 
+
+                String tndata = "";
+                tndata += ("TN[0..." + (this.size - 1) + "]: ");
+                tndata += "(";
+                Integer[] tokenTN = this.token.getTN();
+                for(int i=0; i<this.size; i++){
+                    tndata += tokenTN[i];
+                    tndata += ",";
                 }
-                
+                tndata += ")";
+                System.out.println(tndata); 
             }
         }
 }
@@ -293,9 +352,6 @@ public class Process {
             System.out.printf("%s\t", s);
         }
         System.out.printf("\n");
-
-        // The SES Setup
-        //SesMessageManager sesManager = new SesMessageManager(name, vectorIndex, vectorSize);
 
         System.out.println("Setup local RMI client: " + name);
         setupRmiClient(name);
@@ -334,18 +390,18 @@ public class Process {
         }
 
         singhalManager.printStatus();
+        System.out.println("Start status");
         
 
-        /*
-        int cnt=0;
-        while (rmiList.size() != 0) {
-            System.out.println("Infinite loop");
-            for (int i=0; i<rmiList.size(); i++) {
-                System.out.println("Sending message");
-                delay_ms(10000);
-            }
+        Scanner scanner = new Scanner(System.in);
+        boolean done = false;
+
+        while (!done) {
+            System.out.println("Enter delay for CS and request T: ");
+            int delay  = scanner.nextInt();
+            System.out.println("Requesting token and running CS for " + delay + " seconds");
+            singhalManager.request();
         }
-        */
 
         System.out.println("End");
     }
