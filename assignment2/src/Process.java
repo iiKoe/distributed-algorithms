@@ -53,13 +53,12 @@ public class Process {
         }
     }
 
-
 public static void main (String args[])
 {
 	String name = "";
 	List<String> processList = new ArrayList<String>();
 	List<SinghalRmi> rmiList = new ArrayList<SinghalRmi>();
-
+    
 	if (args.length < 1) {
 		System.out.println("Please provide arguments.");
 		return;
@@ -68,7 +67,7 @@ public static void main (String args[])
 	if (args.length < 1) {
             System.out.println("Provide arguments please");
             return;
-        }
+    }
 
     for (String s: args) {
     	if (name.equals("")){
@@ -80,14 +79,15 @@ public static void main (String args[])
     	}
     }
 
+    int intName = Integer.parseInt(name);
+    ProcessState a = new ProcessState(processList.size() +1, intName); 
+    a.Print();
+
     System.out.println("Other processes:");
     for (String s: processList){
     	System.out.printf("%s\t", s);
     }
     System.out.printf("\n");
-
-    // The SES Setup
-    //SesMessageManager sesManager = new SesMessageManager(name, vectorIndex, vectorSize);
 
     System.out.println("Setup local RMI client: " + name);
     setupRmiClient(name);
@@ -108,8 +108,6 @@ public static void main (String args[])
                 System.out.println("Binding " + s + " succeded!");
             } catch (Exception e) {
                 System.out.println("Bound Error for " + s);
-                //System.out.println("Send RMI message err: " + e.getMessage());
-                //e.printStackTrace();
                 delay_ms(1000);
             }
         }
