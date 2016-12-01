@@ -27,7 +27,7 @@ class SinghalToken implements java.io.Serializable {
 
     public void copy(SinghalToken copy) {
         Integer[] copyTN = copy.getTN();
-        SinghalState[] copyTS = copy.getTS();;
+        SinghalState[] copyTS = copy.getTS();
         if (this.size != copyTN.length) {
             System.out.println("Error: Wrong size!");
         }

@@ -236,11 +236,6 @@ public class Process {
         int processIndex = -1;
 
         if (args.length < 1) {
-            System.out.println("Please provide arguments.");
-            return;
-        }
-
-        if (args.length < 1) {
             System.out.println("Provide arguments please");
             return;
         }
