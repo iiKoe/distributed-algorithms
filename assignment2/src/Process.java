@@ -225,9 +225,42 @@ public class Process {
                 send(j, token);
             }
         }
-    }
 
+        /* Print status */
+        public void printStatus(){
+            System.out.println("-----------------------------------");
+            String processes = "";
+            for (int i=0; i<this.size; i++){
+                processes += "Process " + i + "\t"; 
+            }
+            System.out.println(processes);
 
+            for(int i=0; i<this.size; i++){
+                String status = "(";
+                status += i + ",";
+                status += S[i];
+                status += ")";
+                System.out.printf("%s \t\t", status); 
+            }
+
+            String state = "";
+            state += S[this.pidx];      // Beunfix, maar krijg anders de waarde er niet in. 
+            if (state.equals("H")){
+                
+                try {
+                    SinghalState[] tokenTS = this.token.getTS();            // **** FAALT ****
+                    for (int j=0; j<this.size; j++) {
+                        System.out.println(tokenTS[j]);
+                    }
+                }
+                catch (Exception e){
+                    System.out.println("getTS failed.");
+                    e.printStackTrace();
+                }
+                
+            }
+        }
+}
     public static void main (String args[])
     {
         String name = "";
@@ -299,6 +332,9 @@ public class Process {
         } else {
             singhalManager.init(false);
         }
+
+        singhalManager.printStatus();
+        
 
         /*
         int cnt=0;
