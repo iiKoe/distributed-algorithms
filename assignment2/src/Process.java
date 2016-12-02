@@ -17,6 +17,8 @@ public class Process {
     static SinghalManager singhalManager;
     static List<SinghalRmi> rmiList;
 
+    static int CSDelay = 0; // For testing
+
     static void delay_ms(long ms) {
         try {
             Thread.sleep(ms);
@@ -209,7 +211,9 @@ public class Process {
             this.S[this.pidx] = SinghalState.E;
 
             /* Critical Section code */
-            System.out.println("I am now in the critical section!");
+            System.out.println("I am now in the CS! for: " + CSDelay + " s");
+            delay_ms(CSDelay * 100);
+            System.out.println("I am now done with the CS");
             /* END critical Section code */
 
             Integer[] tokenTN = this.token.getTN();
@@ -407,6 +411,7 @@ public class Process {
             System.out.println("Enter delay for CS and request T: ");
             int delay  = scanner.nextInt();
             System.out.println("Requesting token and running CS for " + delay + " seconds");
+            CSDelay = delay;
             singhalManager.request();
         }
 
