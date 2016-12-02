@@ -331,16 +331,13 @@ public class Process {
             }
         }
 }
-    public static void main (String largs[])
+    public static void main (String args[])
     {
         String name = "";
-        String ip = "";
         List<String> processList = new ArrayList<String>();
+        List<String> ipList = new ArrayList<String>();
         rmiList = new ArrayList<SinghalRmi>();
         int processIndex = -1;
-
-        ip = largs[0];
-        String []args = Arrays.copyOfRange(largs, 1, largs.length);
 
         if (args.length < 1) {
             System.out.println("Provide arguments please");
@@ -348,12 +345,22 @@ public class Process {
         }
 
         int j = 0;
+        boolean ip = false;
         for (String s: args) {
+            // Arg is IP
+            if (ip) {
+                ip = false;
+                ipList.add(s);
+                continue;
+            }
+
+            // Arg is process
             if (name.equals("")){
                 name = s;
             } else {
                 if(!s.equals(name)){
                     processList.add(s);
+                    ip = true;
                     j++;
                 } else {
                     processIndex = j;
@@ -369,7 +376,6 @@ public class Process {
         System.out.printf("\n");
 
         System.out.println("Setup local RMI client: " + name);
-        System.out.println("Connection IP: " + ip);
         setupRmiClient(name);
 
         System.out.println("Setup RMI security manager");
@@ -377,17 +383,18 @@ public class Process {
 
         System.out.println("Opening RMI Connection for provided servers");
 
-        for (String s: processList) {
-            System.out.println("\tOpening RMI Connection for: " + s);
+        for (int i=0; i<processList.size(); i++) {
+            System.out.println("\tOpening RMI Connection for: " + processList.get(i));
+            System.out.println("\tOn IP: " + ipList.get(i));
             boolean bound = false;
             while (!bound) {
                 try {
-                    SinghalRmi obj = (SinghalRmi)Naming.lookup("rmi://" + ip + "/" + s);
+                    SinghalRmi obj = (SinghalRmi)Naming.lookup("rmi://" + ipList.get(i) + "/" + processList.get(i));
                     rmiList.add(obj);
                     bound = true;
-                    System.out.println("Binding " + s + " succeded!");
+                    System.out.println("Binding " + processList.get(i) + " succeded!");
                 } catch (Exception e) {
-                    System.out.println("Bound Error for " + s);
+                    System.out.println("Bound Error for " + processList.get(i));
                     //System.out.println("Send RMI message err: " + e.getMessage());
                     //e.printStackTrace();
                     delay_ms(1000);
