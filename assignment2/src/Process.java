@@ -1,8 +1,12 @@
 /*
-    java -Djava.security.policy=my.policy -Djava.rmi.server.hostname=145.94.141.198 Process 
+    java -Djava.security.policy=my.policy -Djava.rmi.server.hostname=local_ip_addr Process 
 
-    Process p1 p1 p2
-    Process p2 p1 p2
+    Process <This Process> <P0> <ip> <P1> <ip> ... <This Process> <Pn-1> <Pn> <ip>
+
+    Example 3 processes, P0 and P1 on 1 machine and P2 on remote:
+        Process P0 P0 P1 localhost P2 <remoteIP_P2>
+        Process P1 P0 localhost P1 P2 <remoteIP_P2>
+        Process P2 P0 <remoteIP_P0> P1 <remoteIP_P1> P2
 
 */
 
@@ -159,12 +163,12 @@ public class Process {
                 if (j==pidx) {
                     continue;
                 }
-                System.out.println("Start with idx: " + j);
+                //System.out.println("Start with idx: " + j);
                 if (this.S[j] == SinghalState.R) {
                     send(j, this.pidx, this.N[this.pidx]);
                 }
-                System.out.println("End with idx: " + j);
-                System.out.println("");
+                //System.out.println("End with idx: " + j);
+                //System.out.println("");
             }
         }
 
