@@ -331,12 +331,16 @@ public class Process {
             }
         }
 }
-    public static void main (String args[])
+    public static void main (String largs[])
     {
         String name = "";
+        String ip = "";
         List<String> processList = new ArrayList<String>();
         rmiList = new ArrayList<SinghalRmi>();
         int processIndex = -1;
+
+        ip = largs[0];
+        String []args = Arrays.copyOfRange(largs, 1, largs.length);
 
         if (args.length < 1) {
             System.out.println("Provide arguments please");
@@ -365,6 +369,7 @@ public class Process {
         System.out.printf("\n");
 
         System.out.println("Setup local RMI client: " + name);
+        System.out.println("Connection IP: " + ip);
         setupRmiClient(name);
 
         System.out.println("Setup RMI security manager");
@@ -377,7 +382,7 @@ public class Process {
             boolean bound = false;
             while (!bound) {
                 try {
-                    SinghalRmi obj = (SinghalRmi)Naming.lookup("//localhost/" + s);
+                    SinghalRmi obj = (SinghalRmi)Naming.lookup("rmi://" + ip + "/" + s);
                     rmiList.add(obj);
                     bound = true;
                     System.out.println("Binding " + s + " succeded!");
