@@ -212,7 +212,7 @@ public class Process {
 
             /* Critical Section code */
             System.out.println("I am now in the CS! for: " + CSDelay + " s");
-            delay_ms(CSDelay * 100);
+            delay_ms(CSDelay * 1000);
             System.out.println("I am now done with the CS");
             /* END critical Section code */
 
