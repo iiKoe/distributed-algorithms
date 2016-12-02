@@ -43,6 +43,12 @@ public class Process {
         public void sendMessage(SinghalMessage msg) {
             System.out.println("I am " + this.name + " and I received message: " + msg.getMessage());
             // Pass to the algorithm
+            new Thread(() -> {
+                processMessage(msg);
+            }).start();
+        }
+
+        public void processMessage(SinghalMessage msg) {
             if (msg.isRequest() == true) {
                 singhalManager.receive(msg.getFromIdx(), msg.getFromN());
             } else {
@@ -87,7 +93,7 @@ public class Process {
         }
     }
 
-    public static void Multicast(List<SinghalRmi> rmiSendList, SinghalMessage msg) {
+    public static synchronized void multicast(List<SinghalRmi> rmiSendList, SinghalMessage msg) {
         // Send to all the RMI in rmiSendList emulating a multicast
         for (SinghalRmi rmiObj : rmiSendList) {
             try {
@@ -141,7 +147,8 @@ public class Process {
             }
         }
 
-        public void request() {
+        public synchronized void request() {
+            List<Integer> mcList = new ArrayList<Integer>();
             this.S[this.pidx] = SinghalState.R;
             this.N[this.pidx] +=1;
             for (int j=0; j<this.size; j++) {
@@ -174,7 +181,7 @@ public class Process {
         }
 
         /* Receive a REQUEST */
-        public void receive(int fromIdx, int fromN) {
+        public synchronized void receive(int fromIdx, int fromN) {
             this.N[fromIdx] = fromN;
             switch (this.S[this.pidx]) {
                 case E:
@@ -195,7 +202,7 @@ public class Process {
         }
 
         /* Reveive the TOKEN */
-        public void receive(SinghalToken token) {
+        public synchronized void receive(SinghalToken token) {
             /* Save the token to local */
             this.token = token;
         
