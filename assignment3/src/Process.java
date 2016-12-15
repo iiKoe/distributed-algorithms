@@ -91,31 +91,163 @@ public class Process {
         }
     }
 
-    static class manager {
-        int SN;
-        int LN; 
-        NodeState SN;
-        int inBranch;
-        int testEdge;
-        int bestEdge;
-        int bestWeight;
-        int findCount;
+    public static enum GhsNodeState {
+        SLEEPING,
+        FIND,
+        FOUND
+    }
 
-        
+    public static enum GhsNodeEdgeState {
+        UNKNOWN_IN_MST,
+        IN_MST,
+        NOT_IN_MST
+    }
 
-        public void init() {
-            this.SN = NodeState.sleeping;
+    static class GhsEdge {
+        GhsNodeEdgeState state;
+        int weight;
 
-            if (this.SN = NodeState.sleeping){
-            System.out.println("TODO: Write wakup function!");
-            }
+        public GhsEdge() {
+
         }
 
+        public void setState(GhsNodeEdgeState newState) {
+            this.state = newState;
+        }
+
+        public GhsNodeEdgeState getState() {
+            return this.state;
+        }
+
+        public int getWeight() {
+            return this.weight;
+        }
+    }
+
+    static class GhsNode {
+        GhsNodeState state;
+        
+        List<GhsEdge> edges = new ArrayList<GhsEdge>();
+        
+        // (a) the name of the current fragment it belongs to
+        String fragmentName;
+        // (b) the level of the current fragment it belongs to
+        int fragmentLvl;
+        // (c) the edge adjacent to it that leads to the core of the current fragment it belongs to
+        GhsEdge leadsCoreEdge;
+        // (d) the number of *report* messages it still expects
+        int pendingReportMessages;
+        // (e) the edge adjacent to it that leads towords the best canidate for the MOE it knows about
+        GhsEdge leadsBestCanidate;
+        // (f) the weigt of the best canidate for the MOE it knows about
+        int bestKnownWeight;
+        // (g) the edge adjacent to it that is currently testing for being a canidate MOE
+        GhsEdge testingEdge;
 
 
+        public GhsNode() {
+            
+        }
+
+        public void addFindCount(int delta) {
+            this.pendingReportMessages += delta;
+        }
+
+        public GhsNodeState getState() {
+            return this.state;
+        }
+
+        public int getFragmentLvl() {
+            return this.fragmentLvl;
+        }
+
+        public String getFragmentName() {
+            return this.fragmentName;
+        }
 
     }
-    
+
+    // Manager
+    static class GhsManager {
+        
+
+        public GhsManager() {
+            System.out.println("Init Gallager's, Humblet's and Spira's algorithm");
+        }
+
+        // Send message
+        public void send() {
+
+        }
+
+        // II. Wakeup
+        public void wakeup() {
+
+        }
+
+        // III. Receiving a Connect Message
+        public void receiveConnect(GhsNode node, GhsEdge edge, int lvl) {
+            if (node.getState() == GhsNodeState.SLEEPING) {
+                wakeup();
+            }
+            if (lvl < node.getFragmentLvl()) {
+                edge.setState(GhsNodeEdgeState.IN_MST);
+                // send Initiate
+                send(node.getFragmentLvl(), node.getFragmentName(), node.getState());
+                if (node.getState() == GhsNodeState.FIND) {
+                    node.addFindCount(1);
+                }
+            } else if (edge.getState() == GhsNodeEdgeState.UNKNOWN_IN_MST) {
+                // TODO
+                messageQueue.append();
+            } else {
+                // send Initiate
+                send(node.getFragmentLvl()+1, edge.getWeight(), GhsNodeState.FIND);
+            }
+
+        }
+
+        // IV. Receiving an Initiate Message
+        public void receiveInitiate() {
+
+        }
+
+        // V. Test()
+        public void test() {
+
+        }
+
+        // VI. Receiving a Test Message
+        public void receiveTest() {
+
+        }
+
+        // VII. Receiving a Reject Message
+        public void receiveReject() {
+
+        }
+
+        // VIII. Receiving an Accept Message
+        public void receiveAccept() {
+
+        }
+
+        // IX. Report()
+        public void report() {
+
+        }
+
+        // X. Receiving a Report Message
+        public void receiveReport() {
+
+        }
+
+        // XI. Change-Root()
+        public void changeRoot() {
+
+        }
+    }
+
 
     public static void main (String args[])
     {
