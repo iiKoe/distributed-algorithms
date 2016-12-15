@@ -107,6 +107,12 @@ public class Process {
         GhsNodeEdgeState state;
         int weight;
 
+        GhsEdge (int weight){
+            this.state = GhsNodeEdgeState.UNKNOWN_IN_MST;
+            this.weight = weight;
+        }
+
+        // What do you want to do here ?
         public GhsEdge() {
 
         }
@@ -165,6 +171,34 @@ public class Process {
             return this.fragmentName;
         }
 
+        public GhsEdge getTestingEdge() {
+            return this.testingEdge;
+        }
+
+        public GhsEdge getLeadsCoreEdge() {
+            return this.leadsCoreEdge;
+        }
+
+        public void setState (GhsNodeState newState){
+            this.state = newState;
+        }
+
+        public void setFragmentLvl(int newLevel){
+            this.fragmentLvl = newLevel;
+        }
+
+        public void setFragmentName(String newName){
+            this.fragmentName = newName;
+        }
+
+        public void setLeadsCoreEdge(GhsEdge newLead){
+            this.leadsCoreEdge = newLead;
+        }
+
+        public void setBestKnownWeight(int newWeight){
+            this.bestKnownWeigth = newWeight;
+        }
+
     }
 
     // Manager
@@ -181,14 +215,15 @@ public class Process {
         }
 
         // II. Wakeup
-        public void wakeup() {
-
+        public void wakeup(GhsNode node, GhsNodeState newState) {
+            //node.state = GhsNodeState.FIND;
+            node.setState(newState);
         }
 
         // III. Receiving a Connect Message
         public void receiveConnect(GhsNode node, GhsEdge edge, int lvl) {
             if (node.getState() == GhsNodeState.SLEEPING) {
-                wakeup();
+                wakeup(node, GhsNodeState.FIND);
             }
             if (lvl < node.getFragmentLvl()) {
                 edge.setState(GhsNodeEdgeState.IN_MST);
@@ -208,17 +243,45 @@ public class Process {
         }
 
         // IV. Receiving an Initiate Message
-        public void receiveInitiate() {
+        public void receiveInitiate(GhsNode node, GhsEdge edge, int lvl, String fragmentName, GhsNodeEdgeState S) {
+            
+            // upon receipt of (initiate; L,F,S) on edge j do 
+            node.setFragmentLvl(lvl);
+            node.setFragmentName(fragmentName);
+            // doe iets fout hier denk ik node.setState(S);
+            node.setLeadsCoreEdge(edge);
+            node.setBestKnownWeight(Integer.MAX_VALUE);
+
+
 
         }
 
         // V. Test()
         public void test() {
 
+
         }
 
         // VI. Receiving a Test Message
-        public void receiveTest() {
+        public void receiveTest(GhsNode node, GhsEdge edge, int lvl, String F) {
+            if (node.getState() == GhsNodeState.SLEEPING){
+                wakeup(node, GhsNodeState.FIND);
+            }
+
+            if (lvl > node.getFragmentLvl()){
+                // Append msg to queue
+            } else {
+                if (! node.getFragmentName().equals(F)){
+                    // send(accept) on edge j
+                } else {
+                    if (edge.getState() == GhsNodeEdgeState.UNKNOWN_IN_MST){
+                        edge.setState(GhsNodeEdgeState.NOT_IN_MST);
+                    }
+
+                    // if (test-edge != j) then send(reject) on j...
+                    // else test()
+                }
+            }
 
         }
 
