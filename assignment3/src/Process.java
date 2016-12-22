@@ -122,6 +122,13 @@ public class Process {
         public int getWeight() {
             return this.weight;
         }
+
+        public boolean equals(GhsEdge compare) {
+            if (this.weight == compare.getWeight()) {
+                return true;
+            }
+            return false;
+        }
     }
 
     static class GhsNode {
@@ -146,7 +153,7 @@ public class Process {
 
 
         public GhsNode() {
-            
+             
         }
 
         public void addFindCount(int delta) {
@@ -163,6 +170,38 @@ public class Process {
 
         public String getFragmentName() {
             return this.fragmentName;
+        }
+
+        public int getBestKnownWeight() {
+            return this.bestKnownWeight;
+        }
+
+        public void setFragmentLvl(int lvl) {
+            this.fragmentLvl = lvl;
+        }
+
+        public void setFragmentName(String name) {
+            this.fragmentName = name;
+        }
+
+        public void setState(GhsNodeState state) {
+            this.state = state;
+        }
+
+        public void setLeadsCoreEdge(GhsEdge edge) {
+            this.leadsCoreEdge = edge;
+        }
+
+        public void setTestingEdge(GhsEdge edge) {
+            this.testingEdge = edge;
+        }
+
+        public void setBestKnownWeight(int weight) {
+            this.bestKnownWeight = weight;
+        }
+
+        public List<GhsEdge> getEdges() {
+            return this.edges;
         }
 
     }
@@ -182,7 +221,28 @@ public class Process {
 
         // II. Wakeup
         public void wakeup() {
+            int minWeight = Integer.MAX_VALUE;
+            GhsEdge minEdge = null;
 
+            for (GhsEdge adjEdge : node.getEdges()) {
+                if (adjEdge.getState() == GhsNodeEdgeState.UNKNOWN_IN_MST) {
+                    if (adjEdge.getWeight() < minWeight) {
+                        minWeight = adjEdge.getWeight();
+                        minEdge = adjEdge;
+                    }
+                }
+            }
+
+            if (minEdge == null) {
+                return;
+            }
+
+            minEdge.setState(GhsNodeEdgeState.IN_MST);
+            node.setFragmentLvl(0);
+            node.setState(GhsNodeState.FOUND);
+            node.setFindCount(0);
+            // send connect
+            send(0, minEdge);
         }
 
         // III. Receiving a Connect Message
@@ -208,43 +268,146 @@ public class Process {
         }
 
         // IV. Receiving an Initiate Message
-        public void receiveInitiate() {
+        public void receiveInitiate(GhsNode node, int lvl, String fragmentName, GhsNodeState nodeState, GhsEdge edge) {
+            node.setFragmentLvl(lvl); 
+            node.setFragmentName(fragmentName);
+            node.setState(nodeState);
 
+            node.setLeadsCoreEdge(edge);
+            node.setTestingEdge(null);
+            node.setBestKnownWeight(Integer.MAX_VALUE);
+
+            for (GhsEdge adjEdge : node.getEdges()) {
+                if (adjEdge.getState() != GhsNodeEdgeState.IN_MST) {
+                    continue;
+                }
+
+                // Send initiate
+                send(adjEdge, lvl, fragmentName, nodeState);
+                if (nodeState == GhsNodeState.FIND) {
+                    node.addFindCount(1);
+                }
+            }
+
+            if (nodeState == GhsNodeState.FIND) {
+                test();
+            }
         }
 
         // V. Test()
-        public void test() {
+        public void test(GhsNode node) {
+            int minWeight = Integer.MAX_VALUE;
+            GhsEdge minEdge = null;
+
+            for (GhsEdge adjEdge : node.getEdges()) {
+                if (adjEdge.getState() == GhsNodeEdgeState.UNKNOWN_IN_MST) {
+                    if (adjEdge.getWeight() < minWeight) {
+                        minWeight = adjEdge.getWeight();
+                        minEdge = adjEdge;
+                    }
+                }
+            }
+            if (minEdge != null) {
+                node.setTestingEdge(minEdge);
+                // Send test
+                send(node.getFragmentLvl(), node.getFragmentName(), minEdge);
+            } else {
+                // No edge in ?_IN_MST
+                node.setTestingEdge(null);
+                report();
+            }
 
         }
 
         // VI. Receiving a Test Message
-        public void receiveTest() {
-
+        public void receiveTest(int fragmentLvl, String fragmentName, GhsEdge edge) {
+            if (node.getState() == GhsNodeState.SLEEPING) {
+                wakeup();
+            } if (fragmentLvl > node.getFragmentLvl()) {
+                // Append message to the queue
+            } else {
+                if (!fragmentName.equals(node.getFragmentName())) {
+                    // Send accept
+                    send(edge);
+                } else {
+                    if (edge.getState() == GhsNodeEdgeState.UNKNOWN_IN_MST) {
+                        edge.setState(GhsNodeEdgeState.NOT_IN_MST);
+                    } else if (!node.getTestingEdge().equals(edge)) {
+                        // Send reject
+                        send(edge);
+                    } else {
+                        test();
+                    }
+                }
+            }
         }
 
         // VII. Receiving a Reject Message
-        public void receiveReject() {
-
+        public void receiveReject(GhsNode node, GhsEdge edge) {
+            if (edge.getState() == GhsNodeEdgeState.UNKNOWN_IN_MST) {
+                edge.setState(GhsNodeEdgeState.NOT_IN_MST);
+            }
+            test();
         }
 
         // VIII. Receiving an Accept Message
-        public void receiveAccept() {
-
+        public void receiveAccept(GhsNode node, GhsEdge edge) {
+            node.setTestingEdge(null);
+            if (edge.getWeight() < node.getBestKnownWeight()) {
+                node.setLeadsBestCanidate(edge);
+                node.setBestKnownWeight(edge.getWeight());
+            }
+            report(); 
         }
 
         // IX. Report()
-        public void report() {
-
+        public void report(GhsNode node) {
+            if ((node.getFindCount() == 0) && (node.getTestingEdge() == null)) {
+                node.setState(GhsNodeState.FOUND);
+                // Send report
+                send(node.getLeadsCoreEdge(), node.getBestKnownWeight())
+            }
         }
 
         // X. Receiving a Report Message
-        public void receiveReport() {
-
+        public void receiveReport(GhsEdge edge, int bestKnownWeight) {
+            if (!edge.equals(node.getLeadsCoreEdge())) {
+                node.addFindCount(-1);
+                if (bestKnownWeight < node.getBestKnownWeight()) {
+                    node.setBestKnownWeight(bestKnownWeight);
+                    node.setLeadsBestCanidate(edge);
+                }
+                report();
+            } else {
+                if (node.getState() == GhsNodeState.FIND) {
+                    // Put message on queue
+                } else {
+                    if (bestKnownWeight > node.getBestKnownWeight()) {
+                        changeRoot();
+                    } else {
+                        if (bestKnownWeight == node.getBestKnownWeight() == Integer.MAX_VALUE) {
+                            System.out.println("$$$$HALT\n\n\n");
+                        }
+                    }
+                }
+            }
+             
         }
 
         // XI. Change-Root()
         public void changeRoot() {
+            if (edge.getState() == GhsNodeEdgeState.IN_MST) {
+                // Send change root on best edge
+                send(node.getLeadsBestCanidate());
+            } else {
+                // Send connect on best edge
+                send(node.getLeadsBestCanidate());
+                edge.setState(GhsNodeEdgeState.IN_MST);
+            }
+        }
 
+        public void receiveChangeRoot() {
+            changeRoot();
         }
     }
 
