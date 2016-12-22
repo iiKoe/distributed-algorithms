@@ -7,6 +7,6 @@ public class GhsMessage implements java.io.Serializable {
     public GhsEdge edge;
     public int weight;
     public int fragmentLvl;
-    public String fragmentName;
+    public int  fragmentName;
     public GhsNodeState nodeState;
 }

@@ -73,10 +73,11 @@ public class Process {
     static class GhsNode {
         GhsNodeState state;
         
-        List<GhsEdge> edges = new ArrayList<GhsEdge>();
+        //List<GhsEdge> edges = new ArrayList<GhsEdge>();
+        List<GhsEdge> edges;
         
         // (a) the name of the current fragment it belongs to
-        String fragmentName;
+        int fragmentName;
         // (b) the level of the current fragment it belongs to
         int fragmentLvl;
         // (c) the edge adjacent to it that leads to the core of the current fragment it belongs to
@@ -91,8 +92,9 @@ public class Process {
         GhsEdge testingEdge;
 
 
-        public GhsNode() {
-             
+        public GhsNode(List<GhsEdge> edges) {
+            this.state = GhsNodeState.SLEEPING; 
+            this.edges = edges;
         }
 
         public void addFindCount(int delta) {
@@ -115,7 +117,7 @@ public class Process {
             return this.fragmentLvl;
         }
 
-        public String getFragmentName() {
+        public int getFragmentName() {
             return this.fragmentName;
         }
 
@@ -135,7 +137,7 @@ public class Process {
             this.fragmentLvl = lvl;
         }
 
-        public void setFragmentName(String name) {
+        public void setFragmentName(int  name) {
             this.fragmentName = name;
         }
 
@@ -250,7 +252,6 @@ public class Process {
                     node.addFindCount(1);
                 }
             } else if (edge.getState() == GhsNodeEdgeState.UNKNOWN_IN_MST) {
-                // TODO
                 messageQueue.add(this.currentMessage);
             } else {
                 // send Initiate
@@ -260,7 +261,7 @@ public class Process {
         }
 
         // IV. Receiving an Initiate Message
-        public void receiveInitiate(GhsEdge edge, int lvl, String fragmentName, GhsNodeState nodeState) {
+        public void receiveInitiate(GhsEdge edge, int lvl, int fragmentName, GhsNodeState nodeState) {
             node.setFragmentLvl(lvl); 
             node.setFragmentName(fragmentName);
             node.setState(nodeState);
@@ -312,14 +313,14 @@ public class Process {
         }
 
         // VI. Receiving a Test Message
-        public void receiveTest(GhsEdge edge, int fragmentLvl, String fragmentName) {
+        public void receiveTest(GhsEdge edge, int fragmentLvl, int fragmentName) {
             if (node.getState() == GhsNodeState.SLEEPING) {
                 wakeup();
             } if (fragmentLvl > node.getFragmentLvl()) {
                 // Append message to the queue
                 messageQueue.add(this.currentMessage);
             } else {
-                if (!fragmentName.equals(node.getFragmentName())) {
+                if (fragmentNames != node.getFragmentName()) {
                     // Send accept
                     sendAccept(edge);
                 } else {
@@ -419,6 +420,7 @@ public class Process {
             sendMsg(msg);
         }
 
+        /* TODO Init sometimes name, sometimes weight. Weight is used as name! Both the same??
         public void sendInitiate(GhsEdge edge, int lvl, String fragmentName, GhsNodeState state) {
             GhsMessage msg = new GhsMessage();
             msg.msgType = GhsMessageType.INITIATE;
@@ -428,6 +430,7 @@ public class Process {
             msg.nodeState = state;
             sendMsg(msg);
         }
+        */
 
         public void sendInitiate(GhsEdge edge, int lvl, int weight, GhsNodeState state) {
             GhsMessage msg = new GhsMessage();
@@ -438,7 +441,7 @@ public class Process {
             sendMsg(msg);
         }
 
-        public void sendTest(GhsEdge edge, int lvl, String fragmentName) {
+        public void sendTest(GhsEdge edge, int lvl, int fragmentName) {
             GhsMessage msg = new GhsMessage();
             msg.msgType = GhsMessageType.TEST;
             msg.edge = edge;
@@ -480,6 +483,8 @@ public class Process {
         List<String> processList = new ArrayList<String>();
         List<String> ipList = new ArrayList<String>();
         int processIndex = -1;
+
+        List<GhsEdge> edges = new ArrayList<GhsEdge>();
 
         if (args.length < 1) {
             System.out.println("Provide arguments please");
@@ -546,6 +551,8 @@ public class Process {
 
         //singhalManager = new SinghalManager(name, processIndex, rmiList.size());
         // TODO Init manager
+        GhsNode thisNode = new GhsNode(edges);
+        GhsManager ghsManager = new GhsManager(thisNode);
         
 
         Scanner scanner = new Scanner(System.in);
