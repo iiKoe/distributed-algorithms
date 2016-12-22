@@ -12,6 +12,9 @@ public class Process {
 
     // TODO Manager Object
     static Map<String, Rmi> rmiMap = new HashMap<String, Rmi>();
+    static GhsManager ghsManager;
+    static GhsNode thisNode;
+    static String name = "";
 
     static int CSDelay = 0; // For testing
 
@@ -39,7 +42,10 @@ public class Process {
         }
 
         public void sendMessage(GhsMessage msg) {
-            System.out.println("I am " + this.name + " and I received message: ");
+            System.out.println("I am " + this.name + " and I received message: " + msg.msgType);
+            ghsManager.parseMessage(msg);
+            printNode();
+            printEdges(thisNode.getEdges());
         }
     }
 
@@ -57,7 +63,8 @@ public class Process {
     // Send a message
     public static void sendRmiMessage(Rmi RmiObj, GhsMessage msg) {
         try {
-            System.out.println("I am SENDING a msg");
+            System.out.println("I am " + name + " and I am SENDING a msg: " + msg.msgType);
+            System.out.println("Sending on edge: " + msg.edge.getConNodeName());
             RmiObj.sendMessage(msg);
         } catch (Exception e) {
             System.out.println("Send RMI message err: " + e.getMessage());
@@ -326,7 +333,7 @@ public class Process {
                 } else {
                     if (edge.getState() == GhsNodeEdgeState.UNKNOWN_IN_MST) {
                         edge.setState(GhsNodeEdgeState.NOT_IN_MST);
-                    } else if (!node.getTestingEdge().equals(edge)) {
+                    } else if (node.getTestingEdge().getWeight() != edge.getWeight()) {
                         // Send reject
                         sendReject(edge);
                     } else {
@@ -386,7 +393,6 @@ public class Process {
                     }
                 }
             }
-             
         }
 
         // XI. Change-Root()
@@ -412,31 +418,20 @@ public class Process {
             
         }
 
-        public void sendConnect(GhsEdge edge, int weight) {
+        public void sendConnect(GhsEdge edge, int fragmentLvl) {
             GhsMessage msg = new GhsMessage();
             msg.msgType = GhsMessageType.CONNECT;
             msg.edge = edge;
-            msg.weight = weight;
+            msg.fragmentLvl = fragmentLvl;
             sendMsg(msg);
         }
 
-        /* TODO Init sometimes name, sometimes weight. Weight is used as name! Both the same??
-        public void sendInitiate(GhsEdge edge, int lvl, String fragmentName, GhsNodeState state) {
+        public void sendInitiate(GhsEdge edge, int lvl, int fragmentName, GhsNodeState state) {
             GhsMessage msg = new GhsMessage();
             msg.msgType = GhsMessageType.INITIATE;
             msg.edge = edge;
             msg.fragmentLvl = lvl;
             msg.fragmentName = fragmentName;
-            msg.nodeState = state;
-            sendMsg(msg);
-        }
-        */
-
-        public void sendInitiate(GhsEdge edge, int lvl, int weight, GhsNodeState state) {
-            GhsMessage msg = new GhsMessage();
-            msg.msgType = GhsMessageType.INITIATE;
-            msg.edge = edge;
-            msg.weight = weight;
             msg.nodeState = state;
             sendMsg(msg);
         }
@@ -477,10 +472,40 @@ public class Process {
     }
 
 
+    public static void printEdges(List<GhsEdge> edges) {
+        for (GhsEdge e : edges) {
+            System.out.println("Weight: " + e.getWeight());
+            System.out.println("State: " + e.getState());
+            System.out.println("ConNodeName: " + e.getConNodeName());
+            System.out.println("IP: " + e.getConNodeIP());
+            System.out.println();
+        }
+    }
+
+    public static void printNode() {
+        try {
+            System.out.println("------NODE INFO------");
+            System.out.println("Name: " + name);
+            System.out.println("Fragment name: " + thisNode.getFragmentName());
+            System.out.println("Fragment lvl: " + thisNode.getFragmentLvl());
+            System.out.println("State: " + thisNode.getState());
+            System.out.println("Best known weight: " + thisNode.getBestKnownWeight());
+            if (thisNode.getLeadsCoreEdge() != null)
+                System.out.println("LeadsCoreEdge: " + thisNode.getLeadsCoreEdge().getConNodeName());
+            if (thisNode.getLeadsBestCanidate() != null)
+                System.out.println("LeadsBestCanidate: " + thisNode.getLeadsBestCanidate().getConNodeName());
+            if (thisNode.getTestingEdge() != null)
+                System.out.println("Testing edge: " + thisNode.getTestingEdge().getConNodeName());
+        } catch (Exception e) {
+
+        }
+        System.out.println();
+    }
+
+
     public static void main (String args[])
     {
-        String name = "";
-        List<String> processList = new ArrayList<String>();
+        List<String> nodeList = new ArrayList<String>();
         List<String> ipList = new ArrayList<String>();
         int processIndex = -1;
 
@@ -491,35 +516,21 @@ public class Process {
             return;
         }
 
-        int j = 0;
-        boolean ip = false;
         for (String s: args) {
-            // Arg is IP
-            if (ip) {
-                ip = false;
-                ipList.add(s);
-                continue;
-            }
-
-            // Arg is process
-            if (name.equals("")){
-                name = s;
+            String [] components = s.split(":");
+            if (components.length == 1) {
+                name = components[0];
+                System.out.println("Found name: " + name);
+            } else if (components.length == 3) {
+                int edgeWeight = Integer.parseInt(components[2]);
+                edges.add(new GhsEdge(components[0], edgeWeight, components[1]));
             } else {
-                if(!s.equals(name)){
-                    processList.add(s);
-                    ip = true;
-                    j++;
-                } else {
-                    processIndex = j;
-                    System.out.println("My index: " + processIndex);
-                }
+                System.out.println("Unknown component: " + s);
             }
         }
+        System.out.println("--------------------------------------");
+        printEdges(edges);
 
-        System.out.println("Other processes:");
-        for (String s: processList){
-            System.out.printf("%s\t", s);
-        }
         System.out.printf("\n");
 
         System.out.println("Setup local RMI client: " + name);
@@ -530,18 +541,19 @@ public class Process {
 
         System.out.println("Opening RMI Connection for provided servers");
 
-        for (int i=0; i<processList.size(); i++) {
-            System.out.println("\tOpening RMI Connection for: " + processList.get(i));
-            System.out.println("\tOn IP: " + ipList.get(i));
+        for (int i=0; i<edges.size(); i++) {
+            GhsEdge conEdge = edges.get(i);
+            System.out.println("\tOpening RMI Connection for: " + conEdge.getConNodeName());
+            System.out.println("\tOn IP: " + conEdge.getConNodeIP());
             boolean bound = false;
             while (!bound) {
                 try {
-                    Rmi obj = (Rmi)Naming.lookup("rmi://" + ipList.get(i) + "/" + processList.get(i));
-                    rmiMap.put(processList.get(i), obj);
+                    Rmi obj = (Rmi)Naming.lookup("rmi://" + conEdge.getConNodeIP() + "/" + conEdge.getConNodeName());
+                    rmiMap.put(conEdge.getConNodeName(), obj);
                     bound = true;
-                    System.out.println("Binding " + processList.get(i) + " succeded!");
+                    System.out.println("Binding " + conEdge.getConNodeName() + " succeded!");
                 } catch (Exception e) {
-                    System.out.println("Bound Error for " + processList.get(i));
+                    System.out.println("Bound Error for " + conEdge.getConNodeName());
                     //System.out.println("Send RMI message err: " + e.getMessage());
                     //e.printStackTrace();
                     delay_ms(1000);
@@ -551,19 +563,31 @@ public class Process {
 
         //singhalManager = new SinghalManager(name, processIndex, rmiList.size());
         // TODO Init manager
-        GhsNode thisNode = new GhsNode(edges);
-        GhsManager ghsManager = new GhsManager(thisNode);
+        thisNode = new GhsNode(edges);
+        ghsManager = new GhsManager(thisNode);
         
 
         Scanner scanner = new Scanner(System.in);
         boolean done = false;
+        boolean wakeup = true;
+
+        delay_ms(5000);
 
         // For proving correctness
         while (!done) {
-            System.out.println("Enter delay for CS and request T: ");
-            int delay  = scanner.nextInt();
-            System.out.println("Requesting token and running CS for " + delay + " seconds");
-            CSDelay = delay;
+            //int delay  = scanner.nextInt();
+            //scanner.next();
+            //printNode();
+            //printEdges(thisNode.getEdges());
+            if (name.equals("n1") && wakeup == true) {
+                System.out.println("Node: " + name + " waking up (main)");
+                ghsManager.wakeup();
+                wakeup = false;
+                printNode();
+                printEdges(thisNode.getEdges());
+            }
+            delay_ms(5000);
+
         }
 
         System.out.println("End");

@@ -1,14 +1,16 @@
 import java.util.*;
 
-public class GhsEdge {
+public class GhsEdge implements java.io.Serializable {
     GhsNodeEdgeState state;
     int weight;
     String conNodeName;
+    String ip;
 
-    public GhsEdge(String conNodeName, int weight, GhsNodeEdgeState state) {
-        this.state = state;
+    public GhsEdge(String conNodeName, int weight, String ip) {
         this.weight = weight;
         this.conNodeName = conNodeName;
+        this.ip = ip;
+        this.state = GhsNodeEdgeState.UNKNOWN_IN_MST;
     }
 
     public void setState(GhsNodeEdgeState newState) {
@@ -25,6 +27,10 @@ public class GhsEdge {
 
     public String getConNodeName() {
         return this.conNodeName;
+    }
+
+    public String getConNodeIP() {
+        return this.ip;
     }
 
     public boolean equals(GhsEdge compare) {
