@@ -320,7 +320,7 @@ public class Process {
                 // Append message to the queue
                 messageQueue.add(this.currentMessage);
             } else {
-                if (fragmentNames != node.getFragmentName()) {
+                if (fragmentName != node.getFragmentName()) {
                     // Send accept
                     sendAccept(edge);
                 } else {
