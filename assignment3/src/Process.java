@@ -15,6 +15,7 @@ public class Process {
     static GhsManager ghsManager;
     static GhsNode thisNode;
     static String name = "";
+    static List<GhsMessage> messageQueue = new ArrayList<GhsMessage>();
 
     static int CSDelay = 0; // For testing
 
@@ -41,11 +42,45 @@ public class Process {
             this.name = myName;
         }
 
+        public void  checkQueuedMessages() {
+            List<GhsMessage> cq = new ArrayList<GhsMessage>(messageQueue);
+
+            while (cq.size() != 0) {
+                GhsMessage qmsg = cq.get(0);
+
+                cq.remove(qmsg);
+                messageQueue.remove(qmsg);
+
+                System.out.println(">>I am " + this.name + " and I am retrying message: " + qmsg.msgType + " from: " + qmsg.weight);
+                //System.out.println("I am " + this.name + " and I am retrying  message: " + qmsg.msgType);
+                //System.out.println("\n****************");
+
+                //printNode();
+                //printEdges(thisNode.getEdges());
+                ghsManager.parseMessage(qmsg);
+
+            }
+        }
+
         public void sendMessage(GhsMessage msg) {
-            System.out.println("I am " + this.name + " and I received message: " + msg.msgType);
+            System.out.println(">>I am " + this.name + " and I received message: " + msg.msgType + " from: " + msg.weight);
+            //System.out.println("\n****************");
+            //printNode();
+            //printEdges(thisNode.getEdges());
+
             ghsManager.parseMessage(msg);
-            printNode();
-            printEdges(thisNode.getEdges());
+
+            //System.out.println("\n****************");
+            //printNode();
+            //printEdges(thisNode.getEdges());
+
+            checkQueuedMessages();
+
+            //System.out.println("@@@@@@@@@@@ POSSIBLE FINAL STATE @@@@@@@@");
+            //System.out.println("\n****************");
+            //printNode();
+            //printEdges(thisNode.getEdges());
+            //System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
         }
     }
 
@@ -63,8 +98,8 @@ public class Process {
     // Send a message
     public static void sendRmiMessage(Rmi RmiObj, GhsMessage msg) {
         try {
-            System.out.println("I am " + name + " and I am SENDING a msg: " + msg.msgType);
-            System.out.println("Sending on edge: " + msg.edge.getConNodeName());
+            System.out.println(">>I am " + name + " and I am SENDING a msg: " + msg.msgType + " on edge: " + msg.weight + " lvl: " + msg.fragmentLvl);
+            //System.out.println("Sending on edge: " + msg.weight);
             RmiObj.sendMessage(msg);
         } catch (Exception e) {
             System.out.println("Send RMI message err: " + e.getMessage());
@@ -102,6 +137,20 @@ public class Process {
         public GhsNode(List<GhsEdge> edges) {
             this.state = GhsNodeState.SLEEPING; 
             this.edges = edges;
+        }
+
+        public int edgeToId(GhsEdge edge) {
+            return edge.getWeight();
+        }
+
+        public GhsEdge idToEdge(int weight) {
+            for (GhsEdge edge : edges) {
+                if (edge.getWeight() == weight) {
+                    return edge;
+                }
+            }
+            System.out.println("EDGE NOT FOUND\n\n\n");
+            return null;
         }
 
         public void addFindCount(int delta) {
@@ -182,7 +231,6 @@ public class Process {
     static class GhsManager {
         
         GhsNode node;
-        List<GhsMessage> messageQueue = new ArrayList<GhsMessage>();
 
         GhsMessage currentMessage;
 
@@ -191,26 +239,27 @@ public class Process {
             this.node = node;
         }
 
+        //public synchronized void parseMessage(GhsMessage msg) {
         public void parseMessage(GhsMessage msg) {
             this.currentMessage = msg;
             switch (msg.msgType) {
                 case CONNECT:
-                    receiveConnect(msg.edge, msg.fragmentLvl);
+                    receiveConnect(node.idToEdge(msg.weight), msg.fragmentLvl);
                     break;
                 case INITIATE:
-                    receiveInitiate(msg.edge, msg.fragmentLvl, msg.fragmentName, msg.nodeState);
+                    receiveInitiate(node.idToEdge(msg.weight), msg.fragmentLvl, msg.fragmentName, msg.nodeState);
                     break;
                 case TEST:
-                    receiveTest(msg.edge, msg.fragmentLvl, msg.fragmentName);
+                    receiveTest(node.idToEdge(msg.weight), msg.fragmentLvl, msg.fragmentName);
                     break;
                 case ACCEPT:
-                    receiveAccept(msg.edge);
+                    receiveAccept(node.idToEdge(msg.weight));
                     break;
                 case REJECT:
-                    receiveReject(msg.edge);
+                    receiveReject(node.idToEdge(msg.weight));
                     break;
                 case REPORT:
-                    receiveReport(msg.edge, msg.weight);
+                    receiveReport(node.idToEdge(msg.weight), msg.weight);
                     break;
                 case CHANGEROOT:
                     receiveChangeRoot();
@@ -218,6 +267,10 @@ public class Process {
                 default:
                     System.out.println("Unknown message type");
             }
+            System.out.println("\n****************");
+            printNode();
+            printEdges(thisNode.getEdges());
+            System.out.flush();
         }
 
         // II. Wakeup
@@ -226,16 +279,10 @@ public class Process {
             GhsEdge minEdge = null;
 
             for (GhsEdge adjEdge : node.getEdges()) {
-                if (adjEdge.getState() == GhsNodeEdgeState.UNKNOWN_IN_MST) {
-                    if (adjEdge.getWeight() < minWeight) {
-                        minWeight = adjEdge.getWeight();
-                        minEdge = adjEdge;
-                    }
+                if (adjEdge.getWeight() < minWeight) {
+                    minWeight = adjEdge.getWeight();
+                    minEdge = adjEdge;
                 }
-            }
-
-            if (minEdge == null) {
-                return;
             }
 
             minEdge.setState(GhsNodeEdgeState.IN_MST);
@@ -258,11 +305,14 @@ public class Process {
                 if (node.getState() == GhsNodeState.FIND) {
                     node.addFindCount(1);
                 }
-            } else if (edge.getState() == GhsNodeEdgeState.UNKNOWN_IN_MST) {
-                messageQueue.add(this.currentMessage);
             } else {
-                // send Initiate
-                sendInitiate(edge, node.getFragmentLvl()+1, edge.getWeight(), GhsNodeState.FIND);
+                if (edge.getState() == GhsNodeEdgeState.UNKNOWN_IN_MST) {
+                    System.out.println(">> Add queue: receiveConnect");
+                    messageQueue.add(this.currentMessage);
+                } else {
+                    // send Initiate
+                    sendInitiate(edge, node.getFragmentLvl()+1, edge.getWeight(), GhsNodeState.FIND);
+                }
             }
 
         }
@@ -274,18 +324,16 @@ public class Process {
             node.setState(nodeState);
 
             node.setLeadsCoreEdge(edge);
-            node.setTestingEdge(null);
+            node.setLeadsBestCanidate(null);
             node.setBestKnownWeight(Integer.MAX_VALUE);
 
             for (GhsEdge adjEdge : node.getEdges()) {
-                if (adjEdge.getState() != GhsNodeEdgeState.IN_MST) {
-                    continue;
-                }
-
-                // Send initiate
-                sendInitiate(adjEdge, lvl, fragmentName, nodeState);
-                if (nodeState == GhsNodeState.FIND) {
-                    node.addFindCount(1);
+                if ((adjEdge.getState() == GhsNodeEdgeState.IN_MST) && (adjEdge != edge)) {
+                    // Send initiate
+                    sendInitiate(adjEdge, lvl, fragmentName, nodeState);
+                    if (nodeState == GhsNodeState.FIND) {
+                        node.addFindCount(1);
+                    }
                 }
             }
 
@@ -316,7 +364,6 @@ public class Process {
                 node.setTestingEdge(null);
                 report();
             }
-
         }
 
         // VI. Receiving a Test Message
@@ -325,15 +372,20 @@ public class Process {
                 wakeup();
             } if (fragmentLvl > node.getFragmentLvl()) {
                 // Append message to the queue
+                System.out.println(">> Add queue: receiveTest");
                 messageQueue.add(this.currentMessage);
             } else {
+                //System.out.println(">> Got fragmentName: " + fragmentName + " my fragmentName: " + node.getFragmentName());
                 if (fragmentName != node.getFragmentName()) {
                     // Send accept
+                    //System.out.println(">> Send accept");
                     sendAccept(edge);
                 } else {
                     if (edge.getState() == GhsNodeEdgeState.UNKNOWN_IN_MST) {
                         edge.setState(GhsNodeEdgeState.NOT_IN_MST);
-                    } else if (node.getTestingEdge().getWeight() != edge.getWeight()) {
+                    //} else if (node.getTestingEdge().getWeight() != edge.getWeight()) {
+                    }
+                    if (node.getTestingEdge().getWeight() != edge.getWeight()) {
                         // Send reject
                         sendReject(edge);
                     } else {
@@ -354,6 +406,7 @@ public class Process {
         // VIII. Receiving an Accept Message
         public void receiveAccept(GhsEdge edge) {
             node.setTestingEdge(null);
+            System.out.println(">> Accept: edgeWeight: " + edge.getWeight() + " bkw: " + node.getBestKnownWeight());
             if (edge.getWeight() < node.getBestKnownWeight()) {
                 node.setLeadsBestCanidate(edge);
                 node.setBestKnownWeight(edge.getWeight());
@@ -363,6 +416,8 @@ public class Process {
 
         // IX. Report()
         public void report() {
+            System.out.println("*REPORT");
+            System.out.println(">> Report findCount: " + node.getFindCount());
             if ((node.getFindCount() == 0) && (node.getTestingEdge() == null)) {
                 node.setState(GhsNodeState.FOUND);
                 // Send report
@@ -372,7 +427,7 @@ public class Process {
 
         // X. Receiving a Report Message
         public void receiveReport(GhsEdge edge, int bestKnownWeight) {
-            if (!edge.equals(node.getLeadsCoreEdge())) {
+            if (edge.getWeight() != node.getLeadsCoreEdge().getWeight()) {
                 node.addFindCount(-1);
                 if (bestKnownWeight < node.getBestKnownWeight()) {
                     node.setBestKnownWeight(bestKnownWeight);
@@ -382,13 +437,15 @@ public class Process {
             } else {
                 if (node.getState() == GhsNodeState.FIND) {
                     // Put message on queue
+                    System.out.println(">> Add queue: receiveReport");
                     messageQueue.add(this.currentMessage);
                 } else {
                     if (bestKnownWeight > node.getBestKnownWeight()) {
                         changeRoot();
                     } else {
-                        if (bestKnownWeight == node.getBestKnownWeight() && bestKnownWeight  == Integer.MAX_VALUE) {
+                        if (bestKnownWeight == node.getBestKnownWeight() && bestKnownWeight == Integer.MAX_VALUE) {
                             System.out.println("$$$$HALT\n\n\n");
+                            System.exit(1);
                         }
                     }
                 }
@@ -413,15 +470,19 @@ public class Process {
 
         public void sendMsg(GhsMessage msg) {
             // Get the receiver
-            String recName = msg.edge.getConNodeName();
-            sendRmiMessage(recName, msg);
+            String recName = node.idToEdge(msg.weight).getConNodeName();
+            new Thread(() -> {
+                sendRmiMessage(recName, msg);
+            }).start();
+
+            //sendRmiMessage(recName, msg);
             
         }
 
         public void sendConnect(GhsEdge edge, int fragmentLvl) {
             GhsMessage msg = new GhsMessage();
             msg.msgType = GhsMessageType.CONNECT;
-            msg.edge = edge;
+            msg.weight = edge.getWeight();
             msg.fragmentLvl = fragmentLvl;
             sendMsg(msg);
         }
@@ -429,7 +490,7 @@ public class Process {
         public void sendInitiate(GhsEdge edge, int lvl, int fragmentName, GhsNodeState state) {
             GhsMessage msg = new GhsMessage();
             msg.msgType = GhsMessageType.INITIATE;
-            msg.edge = edge;
+            msg.weight = edge.getWeight();
             msg.fragmentLvl = lvl;
             msg.fragmentName = fragmentName;
             msg.nodeState = state;
@@ -439,7 +500,7 @@ public class Process {
         public void sendTest(GhsEdge edge, int lvl, int fragmentName) {
             GhsMessage msg = new GhsMessage();
             msg.msgType = GhsMessageType.TEST;
-            msg.edge = edge;
+            msg.weight = edge.getWeight();
             msg.fragmentLvl = lvl;
             msg.fragmentName = fragmentName;
             sendMsg(msg);
@@ -448,26 +509,30 @@ public class Process {
         public void sendAccept(GhsEdge edge) {
             GhsMessage msg = new GhsMessage();
             msg.msgType = GhsMessageType.ACCEPT;
-            msg.edge = edge;
+            msg.weight = edge.getWeight();
+            sendMsg(msg);
         }
 
         public void sendReject(GhsEdge edge) {
             GhsMessage msg = new GhsMessage();
             msg.msgType = GhsMessageType.REJECT;
-            msg.edge = edge;
+            msg.weight = edge.getWeight();
+            sendMsg(msg);
         }
 
+        // Todo is this OK?
         public void sendReport(GhsEdge edge, int bestWeight) {
             GhsMessage msg = new GhsMessage();
             msg.msgType = GhsMessageType.REPORT;
-            msg.edge = edge;
             msg.weight = bestWeight;
+            sendMsg(msg);
         }
 
         public void sendChangeRoot(GhsEdge edge) {
             GhsMessage msg = new GhsMessage();
             msg.msgType = GhsMessageType.CHANGEROOT;
-            msg.edge = edge;
+            msg.weight = edge.getWeight();
+            sendMsg(msg);
         }
     }
 
@@ -528,8 +593,8 @@ public class Process {
                 System.out.println("Unknown component: " + s);
             }
         }
-        System.out.println("--------------------------------------");
-        printEdges(edges);
+        //System.out.println("--------------------------------------");
+        //printEdges(edges);
 
         System.out.printf("\n");
 
@@ -583,10 +648,14 @@ public class Process {
                 System.out.println("Node: " + name + " waking up (main)");
                 ghsManager.wakeup();
                 wakeup = false;
-                printNode();
-                printEdges(thisNode.getEdges());
+                //printNode();
+                //printEdges(thisNode.getEdges());
             }
             delay_ms(5000);
+            System.out.println("FINAL NODE INFO");
+            printNode();
+            printEdges(thisNode.getEdges());
+            System.exit(-1);
 
         }
 
