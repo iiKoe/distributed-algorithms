@@ -16,6 +16,7 @@ public class Process {
     static GhsNode thisNode;
     static String name = "";
     static List<GhsMessage> messageQueue = new ArrayList<GhsMessage>();
+    static List<GhsMessage> pendingMessages = new ArrayList<GhsMessage>();
 
     static int CSDelay = 0; // For testing
 
@@ -42,45 +43,12 @@ public class Process {
             this.name = myName;
         }
 
-        public void  checkQueuedMessages() {
-            List<GhsMessage> cq = new ArrayList<GhsMessage>(messageQueue);
-
-            while (cq.size() != 0) {
-                GhsMessage qmsg = cq.get(0);
-
-                cq.remove(qmsg);
-                messageQueue.remove(qmsg);
-
-                System.out.println(">>I am " + this.name + " and I am retrying message: " + qmsg.msgType + " from: " + qmsg.weight);
-                //System.out.println("I am " + this.name + " and I am retrying  message: " + qmsg.msgType);
-                //System.out.println("\n****************");
-
-                //printNode();
-                //printEdges(thisNode.getEdges());
-                ghsManager.parseMessage(qmsg);
-
-            }
-        }
-
-        public void sendMessage(GhsMessage msg) {
+        public synchronized void sendMessage(GhsMessage msg) {
+        //public void sendMessage(GhsMessage msg) {
             System.out.println(">>I am " + this.name + " and I received message: " + msg.msgType + " from: " + msg.weight);
-            //System.out.println("\n****************");
-            //printNode();
-            //printEdges(thisNode.getEdges());
-
-            ghsManager.parseMessage(msg);
-
-            //System.out.println("\n****************");
-            //printNode();
-            //printEdges(thisNode.getEdges());
-
-            checkQueuedMessages();
-
-            //System.out.println("@@@@@@@@@@@ POSSIBLE FINAL STATE @@@@@@@@");
-            //System.out.println("\n****************");
-            //printNode();
-            //printEdges(thisNode.getEdges());
-            //System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
+            pendingMessages.add(msg);
+            //ghsManager.parseMessage(msg);
+            //checkQueuedMessages();
         }
     }
 
@@ -105,6 +73,7 @@ public class Process {
             System.out.println("Send RMI message err: " + e.getMessage());
             e.printStackTrace();
         }
+        delay_ms(100);// For testing
     }
 
     public static void sendRmiMessage(String rmiName, GhsMessage msg) {
@@ -155,10 +124,12 @@ public class Process {
 
         public void addFindCount(int delta) {
             this.pendingReportMessages += delta;
+            System.out.println("fc: " + this.pendingReportMessages);
         }
 
         public void setFindCount(int fc) {
             this.pendingReportMessages = fc;
+            System.out.println("fc: " + this.pendingReportMessages);
         }
 
         public int getFindCount() {
@@ -235,13 +206,16 @@ public class Process {
         GhsMessage currentMessage;
 
         public GhsManager(GhsNode node) {
-            System.out.println("Init Gallager's, Humblet's and Spira's algorithm");
+            //System.out.println("Init Gallager's, Humblet's and Spira's algorithm");
             this.node = node;
         }
 
         //public synchronized void parseMessage(GhsMessage msg) {
         public void parseMessage(GhsMessage msg) {
             this.currentMessage = msg;
+
+            System.out.println(">>I am " + name + " and I am parsing message: " + msg.msgType + " from: " + msg.weight);
+
             switch (msg.msgType) {
                 case CONNECT:
                     receiveConnect(node.idToEdge(msg.weight), msg.fragmentLvl);
@@ -267,11 +241,31 @@ public class Process {
                 default:
                     System.out.println("Unknown message type");
             }
-            System.out.println("\n****************");
             printNode();
-            printEdges(thisNode.getEdges());
-            System.out.flush();
+            //printEdges(thisNode.getEdges());
+            //System.out.flush();
+            //System.out.println("\n****************");
         }
+
+        public void checkQueuedMessages() {
+            List<GhsMessage> cq = new ArrayList<GhsMessage>(messageQueue);
+
+            while (cq.size() != 0) {
+                GhsMessage qmsg = cq.get(0);
+
+                cq.remove(qmsg);
+                messageQueue.remove(qmsg);
+
+                System.out.println(">>I am " + name + " and I am retrying message: " + qmsg.msgType + " from: " + qmsg.weight);
+                //System.out.println("\n****************");
+
+                //printNode();
+                //printEdges(thisNode.getEdges());
+                ghsManager.parseMessage(qmsg);
+
+            }
+        }
+
 
         // II. Wakeup
         public void wakeup() {
@@ -416,7 +410,6 @@ public class Process {
 
         // IX. Report()
         public void report() {
-            System.out.println("*REPORT");
             System.out.println(">> Report findCount: " + node.getFindCount());
             if ((node.getFindCount() == 0) && (node.getTestingEdge() == null)) {
                 node.setState(GhsNodeState.FOUND);
@@ -651,11 +644,22 @@ public class Process {
                 //printNode();
                 //printEdges(thisNode.getEdges());
             }
+
+            if (pendingMessages.size() != 0) {
+                System.out.println("Queue size: " + pendingMessages.size());
+                GhsMessage msg = pendingMessages.remove(0);
+                ghsManager.parseMessage(msg);
+                ghsManager.checkQueuedMessages();
+            }
+            delay_ms(100);
+
+            /*
             delay_ms(5000);
             System.out.println("FINAL NODE INFO");
             printNode();
             printEdges(thisNode.getEdges());
             System.exit(-1);
+            */
 
         }
 
