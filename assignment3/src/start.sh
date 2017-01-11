@@ -1,8 +1,5 @@
 #!/bin/bash
 
-pkill rmiregistry
-sleep 1
-rmiregistry &
 
 
 function run {

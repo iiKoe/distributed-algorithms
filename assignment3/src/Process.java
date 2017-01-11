@@ -10,15 +10,13 @@ import java.rmi.server.UnicastRemoteObject;
 
 public class Process {
 
-    // TODO Manager Object
     static Map<String, Rmi> rmiMap = new HashMap<String, Rmi>();
     static GhsManager ghsManager;
     static GhsNode thisNode;
     static String name = "";
     static List<GhsMessage> messageQueue = new ArrayList<GhsMessage>();
-    static List<GhsMessage> pendingMessages = new ArrayList<GhsMessage>();
+    //static List<GhsMessage> pendingMessages = new ArrayList<GhsMessage>();
 
-    static int CSDelay = 0; // For testing
 
     static void delay_ms(long ms) {
         try {
@@ -46,9 +44,8 @@ public class Process {
         public synchronized void sendMessage(GhsMessage msg) {
         //public void sendMessage(GhsMessage msg) {
             System.out.println(">>I am " + this.name + " and I received message: " + msg.msgType + " from: " + msg.weight);
-            pendingMessages.add(msg);
-            //ghsManager.parseMessage(msg);
-            //checkQueuedMessages();
+            //pendingMessages.add(msg);
+            messageQueue.add(msg);
         }
     }
 
@@ -73,7 +70,6 @@ public class Process {
             System.out.println("Send RMI message err: " + e.getMessage());
             e.printStackTrace();
         }
-        delay_ms(100);// For testing
     }
 
     public static void sendRmiMessage(String rmiName, GhsMessage msg) {
@@ -210,8 +206,8 @@ public class Process {
             this.node = node;
         }
 
-        //public synchronized void parseMessage(GhsMessage msg) {
-        public void parseMessage(GhsMessage msg) {
+        public synchronized void parseMessage(GhsMessage msg) {
+        //public void parseMessage(GhsMessage msg) {
             this.currentMessage = msg;
 
             System.out.println(">>I am " + name + " and I am parsing message: " + msg.msgType + " from: " + msg.weight);
@@ -233,7 +229,7 @@ public class Process {
                     receiveReject(node.idToEdge(msg.weight));
                     break;
                 case REPORT:
-                    receiveReport(node.idToEdge(msg.weight), msg.weight);
+                    receiveReport(node.idToEdge(msg.weight), msg.bestWeight);
                     break;
                 case CHANGEROOT:
                     receiveChangeRoot();
@@ -241,7 +237,7 @@ public class Process {
                 default:
                     System.out.println("Unknown message type");
             }
-            printNode();
+            //printNode();
             //printEdges(thisNode.getEdges());
             //System.out.flush();
             //System.out.println("\n****************");
@@ -269,6 +265,7 @@ public class Process {
 
         // II. Wakeup
         public void wakeup() {
+            System.out.println(">>Wakeup");
             int minWeight = Integer.MAX_VALUE;
             GhsEdge minEdge = null;
 
@@ -517,7 +514,8 @@ public class Process {
         public void sendReport(GhsEdge edge, int bestWeight) {
             GhsMessage msg = new GhsMessage();
             msg.msgType = GhsMessageType.REPORT;
-            msg.weight = bestWeight;
+            msg.weight = edge.getWeight();
+            msg.bestWeight = bestWeight;
             sendMsg(msg);
         }
 
@@ -620,7 +618,6 @@ public class Process {
         }
 
         //singhalManager = new SinghalManager(name, processIndex, rmiList.size());
-        // TODO Init manager
         thisNode = new GhsNode(edges);
         ghsManager = new GhsManager(thisNode);
         
@@ -645,11 +642,13 @@ public class Process {
                 //printEdges(thisNode.getEdges());
             }
 
-            if (pendingMessages.size() != 0) {
-                System.out.println("Queue size: " + pendingMessages.size());
-                GhsMessage msg = pendingMessages.remove(0);
+            if (messageQueue.size() != 0) {
+                System.out.println("Queue size: " + messageQueue.size());
+                GhsMessage msg = messageQueue.remove(0);
                 ghsManager.parseMessage(msg);
-                ghsManager.checkQueuedMessages();
+                //ghsManager.checkQueuedMessages();
+                printNode();
+                printEdges(thisNode.getEdges());
             }
             delay_ms(100);
 
