@@ -5,10 +5,10 @@
 rmiregistry &
 sleep 3
 
-LOCAL_IP="localhost"
+LOCAL_IP="145.94.198.10"
 
 IP_1="localhost"
-IP_2="localhost"
+IP_2="145.94.171.197"
 
 function run {
     #java -Djava.security.policy=my.policy Process $1 $2 $3 &
@@ -35,7 +35,7 @@ n4_n1="$n1:8"
 
 run "n1" "$n1_n4" "$n1_n2" >> n1.out 2>&1
 run "n2" "$n2_n1" "$n2_n3" >> n2.out 2>&1
-run "n3" "$n3_n2" "$n3_n4" >> n3.out 2>&1
-run "n4" "$n4_n3" "$n4_n1" >> n4.out 2>&1
+#run "n3" "$n3_n2" "$n3_n4" >> n3.out 2>&1
+#run "n4" "$n4_n3" "$n4_n1" >> n4.out 2>&1
 
-multitail n1.out n2.out n3.out n4.out
+multitail n1.out n2.out

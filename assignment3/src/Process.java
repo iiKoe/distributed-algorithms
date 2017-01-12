@@ -3,6 +3,7 @@
 */
 
 import java.util.*;
+import java.util.concurrent.*;
 import java.lang.*;
 import java.rmi.Naming; 
 import java.rmi.RemoteException;
@@ -14,7 +15,7 @@ public class Process {
     static GhsManager ghsManager;
     static GhsNode thisNode;
     static String name = "";
-    static List<GhsMessage> messageQueue = new ArrayList<GhsMessage>();
+    static  ConcurrentLinkedQueue<GhsMessage> messageQueue = new ConcurrentLinkedQueue<GhsMessage>();
     //static List<GhsMessage> pendingMessages = new ArrayList<GhsMessage>();
 
 
@@ -41,8 +42,8 @@ public class Process {
             this.name = myName;
         }
 
-        public synchronized void sendMessage(GhsMessage msg) {
-        //public void sendMessage(GhsMessage msg) {
+        //public synchronized void sendMessage(GhsMessage msg) {
+        public void sendMessage(GhsMessage msg) {
             System.out.println(">>I am " + this.name + " and I received message: " + msg.msgType + " from: " + msg.weight);
             //pendingMessages.add(msg);
             messageQueue.add(msg);
@@ -216,7 +217,7 @@ public class Process {
         }
 
 
-        public synchronized void parseMessage(GhsMessage msg) {
+        public void parseMessage(GhsMessage msg) {
         //public void parseMessage(GhsMessage msg) {
             this.currentMessage = msg;
 
@@ -259,26 +260,6 @@ public class Process {
             //System.out.flush();
             //System.out.println("\n****************");
         }
-
-        public void checkQueuedMessages() {
-            List<GhsMessage> cq = new ArrayList<GhsMessage>(messageQueue);
-
-            while (cq.size() != 0) {
-                GhsMessage qmsg = cq.get(0);
-
-                cq.remove(qmsg);
-                messageQueue.remove(qmsg);
-
-                System.out.println(">>I am " + name + " and I am retrying message: " + qmsg.msgType + " from: " + qmsg.weight);
-                //System.out.println("\n****************");
-
-                //printNode();
-                //printEdges(thisNode.getEdges());
-                ghsManager.parseMessage(qmsg);
-
-            }
-        }
-
 
         // II. Wakeup
         public void wakeup() {
@@ -480,9 +461,7 @@ public class Process {
         public void sendMsg(GhsMessage msg) {
             // Get the receiver
             String recName = node.idToEdge(msg.weight).getConNodeName();
-            new Thread(() -> {
-                sendRmiMessage(recName, msg);
-            }).start();
+            sendRmiMessage(recName, msg);
 
             //sendRmiMessage(recName, msg);
             
@@ -645,10 +624,10 @@ public class Process {
         boolean done = false;
         boolean wakeup = true;
 
-        delay_ms(5000);
 
         while (!done) {
             if (name.equals("n1") && wakeup == true) {
+                delay_ms(10000);
                 System.out.println("Node: " + name + " waking up (main)");
                 ghsManager.wakeup();
                 wakeup = false;
@@ -656,7 +635,7 @@ public class Process {
 
             if (messageQueue.size() != 0) {
                 System.out.println("Queue size: " + messageQueue.size());
-                GhsMessage msg = messageQueue.remove(0);
+                GhsMessage msg = messageQueue.remove();
                 ghsManager.parseMessage(msg);
                 printNode();
                 printEdges(thisNode.getEdges());
