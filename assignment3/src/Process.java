@@ -206,9 +206,26 @@ public class Process {
             this.node = node;
         }
 
+        public void sendStopAll() {
+            for (GhsEdge adjEdge : node.getEdges()) {
+                GhsMessage msg = new GhsMessage();
+                msg.weight = adjEdge.getWeight();
+                msg.stop = true;
+                sendMsg(msg);
+            }
+        }
+
+
         public synchronized void parseMessage(GhsMessage msg) {
         //public void parseMessage(GhsMessage msg) {
             this.currentMessage = msg;
+
+            if (msg.stop == true) {
+                // Propegate stop and stop
+                System.out.println("Got HALT, someone found the MST");
+                sendStopAll();
+                System.exit(1);
+            }
 
             System.out.println(">>I am " + name + " and I am parsing message: " + msg.msgType + " from: " + msg.weight);
 
@@ -376,7 +393,8 @@ public class Process {
                         edge.setState(GhsNodeEdgeState.NOT_IN_MST);
                     //} else if (node.getTestingEdge().getWeight() != edge.getWeight()) {
                     }
-                    if (node.getTestingEdge().getWeight() != edge.getWeight()) {
+                    // NB. Null test added!
+                    if ((node.getTestingEdge() != null) && (node.getTestingEdge().getWeight() != edge.getWeight())) {
                         // Send reject
                         sendReject(edge);
                     } else {
@@ -435,6 +453,7 @@ public class Process {
                     } else {
                         if (bestKnownWeight == node.getBestKnownWeight() && bestKnownWeight == Integer.MAX_VALUE) {
                             System.out.println("$$$$HALT\n\n\n");
+                            sendStopAll();
                             System.exit(1);
                         }
                     }
@@ -628,37 +647,21 @@ public class Process {
 
         delay_ms(5000);
 
-        // For proving correctness
         while (!done) {
-            //int delay  = scanner.nextInt();
-            //scanner.next();
-            //printNode();
-            //printEdges(thisNode.getEdges());
             if (name.equals("n1") && wakeup == true) {
                 System.out.println("Node: " + name + " waking up (main)");
                 ghsManager.wakeup();
                 wakeup = false;
-                //printNode();
-                //printEdges(thisNode.getEdges());
             }
 
             if (messageQueue.size() != 0) {
                 System.out.println("Queue size: " + messageQueue.size());
                 GhsMessage msg = messageQueue.remove(0);
                 ghsManager.parseMessage(msg);
-                //ghsManager.checkQueuedMessages();
                 printNode();
                 printEdges(thisNode.getEdges());
             }
             delay_ms(100);
-
-            /*
-            delay_ms(5000);
-            System.out.println("FINAL NODE INFO");
-            printNode();
-            printEdges(thisNode.getEdges());
-            System.exit(-1);
-            */
 
         }
 
